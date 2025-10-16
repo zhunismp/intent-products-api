@@ -1,0 +1,25 @@
+services:
+  app:
+    build: .
+    container_name: intent-produts-api-dev
+    ports:
+      - "8080:8080"
+    environment:
+      - MONGO_URI=mongodb://mongo:27017
+      - MONGO_DB=shopdb
+      - APP_NAME=Intent Products API
+      - APP_ENV=development
+      - HTTP_PORT=8080
+
+    depends_on:
+      - mongo
+    restart: always
+
+  mongo:
+    image: mongo:7
+    container_name: intent-products-mongo-dev
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: secret
