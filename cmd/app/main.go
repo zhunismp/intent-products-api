@@ -11,8 +11,8 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/zhunismp/intent-products-api/internal/adapters/db"
-	"github.com/zhunismp/intent-products-api/internal/adapters/http/handlers"
+	"github.com/zhunismp/intent-products-api/internal/interfaces/db"
+	"github.com/zhunismp/intent-products-api/internal/interfaces/http/handlers"
 	"github.com/zhunismp/intent-products-api/internal/applications/services"
 	"github.com/zhunismp/intent-products-api/internal/infrastructure/client"
 	"github.com/zhunismp/intent-products-api/internal/infrastructure/config"

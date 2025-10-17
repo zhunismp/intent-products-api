@@ -3,9 +3,10 @@ package usecases
 import (
 	"context"
 
-	"github.com/zhunismp/intent-products-api/internal/adapters/http/transport"
+	"github.com/zhunismp/intent-products-api/internal/common/errors"
+	"github.com/zhunismp/intent-products-api/internal/core/dtos"
 )
 
 type ProductUsecase interface {
-	CreateProduct(context.Context, transport.CreateProductRequest) error
+	CreateProduct(context.Context, dtos.CreateProductInput) *errors.AppError
 }

@@ -3,9 +3,11 @@ package services
 import (
 	"context"
 
-	"github.com/zhunismp/intent-products-api/internal/adapters/http/transport"
 	"github.com/zhunismp/intent-products-api/internal/applications/repositories"
-	// "github.com/zhunismp/intent-products-api/internal/core/entities"
+	"github.com/zhunismp/intent-products-api/internal/applications/validators"
+	"github.com/zhunismp/intent-products-api/internal/common/errors"
+
+	"github.com/zhunismp/intent-products-api/internal/core/dtos"
 	"github.com/zhunismp/intent-products-api/internal/core/usecases"
 )
 
@@ -19,6 +21,14 @@ func NewProductService(productRepo repositories.ProductRepository) usecases.Prod
 	}
 }
 
-func (s *ProductService) CreateProduct(ctx context.Context, createProductReq transport.CreateProductRequest) error {
+func (s *ProductService) CreateProduct(ctx context.Context, createProductReq dtos.CreateProductInput) *errors.AppError {
+	
+	// validate request
+	if err := validators.ValidateCreateProductReq(createProductReq); err != nil {
+		return errors.BadRequest("validation failed", err)
+	}
+
+	// transform to core model
+
 	return nil
 }
