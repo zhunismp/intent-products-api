@@ -4,7 +4,7 @@ import (
 	"context"
 	"log"
 
-	"github.com/zhunismp/intent-products-api/internal/applications/repositories"
+	"github.com/zhunismp/intent-products-api/internal/core/repositories"
 	"github.com/zhunismp/intent-products-api/internal/core/entities"
 	"github.com/zhunismp/intent-products-api/internal/core/domainerrors"
 	"go.mongodb.org/mongo-driver/v2/bson"
@@ -29,12 +29,12 @@ func NewProductRepositoryImpl(ctx context.Context, db *mongo.Database) repositor
 	}
 }
 
-func (r *ProductRepositoryImpl) CreateProduct(ctx context.Context, product entities.Product) error {
+func (r *ProductRepositoryImpl) CreateProduct(ctx context.Context, product entities.Product) (*entities.Product, error) {
 	_, err := r.collection.InsertOne(ctx, product)
 	if mongo.IsDuplicateKeyError(err) {
-		return domainerrors.ErrorDuplicateProduct
+		return nil, domainerrors.ErrorDuplicateProduct
 	}
-	return err
+	return &product, err
 }
 
 func applyIndex(ctx context.Context, collection *mongo.Collection) error {

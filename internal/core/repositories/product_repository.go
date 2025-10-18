@@ -7,5 +7,5 @@ import (
 )
 
 type ProductRepository interface {
-	CreateProduct(context.Context, entities.Product) error
+	CreateProduct(context.Context, entities.Product) (*entities.Product, error)
 }

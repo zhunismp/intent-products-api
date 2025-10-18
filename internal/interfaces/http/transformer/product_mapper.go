@@ -1,4 +1,4 @@
-package mapper
+package transformer
 
 import (
 	"github.com/zhunismp/intent-products-api/internal/core/dtos"

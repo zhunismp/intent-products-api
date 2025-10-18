@@ -3,10 +3,10 @@ package usecases
 import (
 	"context"
 
-	"github.com/zhunismp/intent-products-api/internal/common/apperrors"
 	"github.com/zhunismp/intent-products-api/internal/core/dtos"
+	"github.com/zhunismp/intent-products-api/internal/core/entities"
 )
 
 type ProductUsecase interface {
-	CreateProduct(context.Context, dtos.CreateProductInput) *apperrors.AppError
+	CreateProduct(context.Context, dtos.CreateProductInput) (*entities.Product, error)
 }

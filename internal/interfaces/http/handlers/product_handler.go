@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/zhunismp/intent-products-api/internal/core/usecases"
-	"github.com/zhunismp/intent-products-api/internal/interfaces/http/mapper"
+	"github.com/zhunismp/intent-products-api/internal/interfaces/http/transformer"
 	"github.com/zhunismp/intent-products-api/internal/interfaces/http/transport"
 )
 
@@ -31,33 +31,35 @@ func (h *ProductHttpHandler) CreateProduct(w http.ResponseWriter, r *http.Reques
 	var req transport.CreateProductRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		// TODO: add logging
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(400)
-
-		json.NewEncoder(w).Encode(
-			transport.ErrorResponse{
-				StatusCode:   400,
-				ErrorMessage: err.Error(),
-			},
-		)
-
+		writeError(w, err)
 		return
 	}
 
 	b, _ := json.Marshal(req)
 	log.Println(string(b))
 
-	if err := h.productUsecase.CreateProduct(ctx, mapper.ToCreateProductInput(req)); err != nil {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(int(err.Status)) // TODO: remove typecasting
-
-		json.NewEncoder(w).Encode(
-			transport.ErrorResponse{
-				StatusCode:   int32(err.Status),
-				ErrorMessage: err.Message,
-			},
-		)
-
+	createdProduct, err := h.productUsecase.CreateProduct(ctx, transformer.ToCreateProductInput(req))
+	if err != nil {
+		writeError(w, err)
 		return
 	}
+
+	writeResponse(w, createdProduct, "product created")
+}
+
+func writeError(w http.ResponseWriter, err error) {
+	errResponse := transformer.ToErrorResponse(err)
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(errResponse.StatusCode)
+	json.NewEncoder(w).Encode(errResponse)
+}
+
+func writeResponse(w http.ResponseWriter, data any, message string) {
+	response := transformer.ToResponse(data, message)
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	json.NewEncoder(w).Encode(response)
+
 }

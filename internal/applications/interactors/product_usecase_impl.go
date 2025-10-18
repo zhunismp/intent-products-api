@@ -1,15 +1,14 @@
-package services
+package interactors
 
 import (
 	"context"
 	"errors"
-	"log"
+	"fmt"
 	"time"
 
 	"github.com/bwmarrin/snowflake"
-	"github.com/zhunismp/intent-products-api/internal/applications/repositories"
 	"github.com/zhunismp/intent-products-api/internal/applications/validators"
-	"github.com/zhunismp/intent-products-api/internal/common/apperrors"
+	"github.com/zhunismp/intent-products-api/internal/core/repositories"
 
 	"github.com/zhunismp/intent-products-api/internal/core/domainerrors"
 	"github.com/zhunismp/intent-products-api/internal/core/dtos"
@@ -17,26 +16,26 @@ import (
 	"github.com/zhunismp/intent-products-api/internal/core/usecases"
 )
 
-type ProductService struct {
+type ProductUsecaseImpl struct {
 	productRepo repositories.ProductRepository
 }
 
-func NewProductService(productRepo repositories.ProductRepository) usecases.ProductUsecase {
-	return &ProductService{
+func NewProductUsecase(productRepo repositories.ProductRepository) usecases.ProductUsecase {
+	return &ProductUsecaseImpl{
 		productRepo: productRepo,
 	}
 }
 
-func (s *ProductService) CreateProduct(ctx context.Context, createProductInput dtos.CreateProductInput) *apperrors.AppError {
+func (s *ProductUsecaseImpl) CreateProduct(ctx context.Context, createProductInput dtos.CreateProductInput) (*entities.Product, error) {
 
 	// validate request
 	if err := validators.ValidateCreateProductReq(createProductInput); err != nil {
-		return apperrors.BadRequest("validation failed", err)
+		return nil, domainerrors.ErrorProducInput
 	}
 
 	node, err := snowflake.NewNode(1)
 	if err != nil {
-		return apperrors.Internal("error while get node from snowflake", err)
+		return nil, fmt.Errorf("error while get node from snowflake: %v", err)
 	}
 
 	// transform to core model
@@ -61,13 +60,13 @@ func (s *ProductService) CreateProduct(ctx context.Context, createProductInput d
 		Causes:    causes,
 	}
 
-	if err := s.productRepo.CreateProduct(ctx, product); err != nil {
-		log.Print(err.Error())
+	createdProdcut, err := s.productRepo.CreateProduct(ctx, product) 
+	if err != nil {
 		if errors.Is(err, domainerrors.ErrorDuplicateProduct) {
-			return apperrors.BadRequest("can not add duplicate product", err)
+			return nil, err
 		}
-		return apperrors.Internal("error occur while saving to db", err)
+		return nil, fmt.Errorf("failed to save product to database: %w", err)
 	}
 
-	return nil
+	return createdProdcut, nil
 }

@@ -1,12 +1,12 @@
 package transport
 
 type SuccessResponse struct {
-	StatusCode int32  `json:"statusCode"`
+	StatusCode int  `json:"statusCode"`
 	Message    string `json:"message"`
-	Data       []any  `json:"data"`
+	Data       any  `json:"data"`
 }
 
 type ErrorResponse struct {
-	StatusCode   int32  `json:"statusCode"`
+	StatusCode   int  `json:"statusCode"`
 	ErrorMessage string `json:"errorMessage"`
 }
