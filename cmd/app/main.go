@@ -22,11 +22,11 @@ func main() {
 	cfg := config.Load()
 	log.Printf("🚀 Starting %s in %s mode...", cfg.AppName, cfg.Env) // TODO: replace with cool banner.
 
-	ctx, cancel := context.WithTimeout(context.Background(), 20)
+	ctx, cancel := context.WithTimeout(context.Background(), 20 * time.Second)
 
 	// Initialize dependencies
 	mongoClient := client.NewMongoClient(ctx, cfg)
-	productRepository := db.NewProductRepositoryImpl(mongoClient.Database(cfg.Mongo.Database))
+	productRepository := db.NewProductRepositoryImpl(ctx, mongoClient.Database(cfg.Mongo.Database))
 	productService := services.NewProductService(productRepository)
 	productHttpHandler := handlers.NewProductHttpHandler(productService)
 
@@ -40,6 +40,7 @@ func main() {
 
 	defer func() {
 		log.Print("Shutting down...")
+		mongoClient.Disconnect(ctx)
 		cancel()
 	}()
 }

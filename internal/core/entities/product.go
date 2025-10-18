@@ -1,22 +1,23 @@
 package entities
 
-import "time"
+import (
+	"time"
+)
 
 type Product struct {
-	ID        int
-	OwnerID   int
-	Name      string
-	ImageUrl  *string
-	Link      *string
-	Price     float64
-	AddedAt   time.Time
-	UpdatedAt time.Time
-	IsBought  bool
-	Status    string
-	Causes    []Cause
+	ID        int64     `bson:"id"`
+	OwnerID   int64     `bson:"owner_id"`
+	Name      string    `bson:"name"`
+	ImageUrl  *string   `bson:"image_url,omitempty"`
+	Link      *string   `bson:"link,omitempty"`
+	Price     float64   `bson:"price"`
+	AddedAt   time.Time `bson:"added_at"`
+	UpdatedAt time.Time `bson:"updated_at"`
+	Status    string    `bson:"status"`
+	Causes    []Cause   `bson:"causes,omitempty"`
 }
 
 type Cause struct {
-	Reason string
-	Status string
+	Reason string `bson:"reason"`
+	Status bool   `bson:"status"`
 }

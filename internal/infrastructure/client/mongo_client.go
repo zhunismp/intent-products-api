@@ -14,18 +14,12 @@ func NewMongoClient(ctx context.Context, cfg *config.Config) *mongo.Client {
 	client, err := mongo.Connect(options.Client().ApplyURI(cfg.Mongo.URI))
 
 	if err != nil {
-		log.Fatal("❌ failed to connect to MongoDB: %v", err)
+		log.Fatal("❌ failed to connect to MongoDB: %w", err)
 	}
-
-	defer func() {
-		if err := client.Disconnect(context.TODO()); err != nil {
-			log.Fatal("❌ failed to disconnect MongoDB: %v", err)
-		}
-	}()
 
 	// ping to check connection
 	if err := client.Ping(context.TODO(), readpref.Primary()); err != nil {
-		log.Fatal("❌ failed to ping MongoDB: %v", err)
+		log.Fatal("❌ failed to ping MongoDB: %w", err)
 	}
 
 	return client

@@ -7,9 +7,9 @@ import (
 	"github.com/zhunismp/intent-products-api/internal/core/dtos"
 )
 
-func ValidateCreateProductReq(req dtos.CreateProductInput) error {
+func ValidateCreateProductReq(input dtos.CreateProductInput) error {
 	validate := validator.New()
-	if err := validate.Struct(req); err != nil {
+	if err := validate.Struct(input); err != nil {
 		return errors.New("validation failed")
 	}
 
