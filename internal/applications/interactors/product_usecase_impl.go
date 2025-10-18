@@ -20,7 +20,7 @@ type ProductUsecaseImpl struct {
 	productRepo repositories.ProductRepository
 }
 
-func NewProductUsecase(productRepo repositories.ProductRepository) usecases.ProductUsecase {
+func NewProductUsecaseImpl(productRepo repositories.ProductRepository) usecases.ProductUsecase {
 	return &ProductUsecaseImpl{
 		productRepo: productRepo,
 	}
@@ -47,15 +47,17 @@ func (s *ProductUsecaseImpl) CreateProduct(ctx context.Context, createProductInp
 		}
 	}
 
+	currTime := time.Now()
+
 	product := entities.Product{
 		ID:        node.Generate().Int64(),
-		OwnerID:   1,
+		OwnerID:   createProductInput.UserID,
 		Name:      createProductInput.Title,
 		ImageUrl:  nil,
 		Link:      createProductInput.Link,
 		Price:     createProductInput.Price,
-		AddedAt:   time.Now(),
-		UpdatedAt: time.Now(),
+		AddedAt:   currTime,
+		UpdatedAt: currTime,
 		Status:    entities.STAGING,
 		Causes:    causes,
 	}
@@ -65,7 +67,7 @@ func (s *ProductUsecaseImpl) CreateProduct(ctx context.Context, createProductInp
 		if errors.Is(err, domainerrors.ErrorDuplicateProduct) {
 			return nil, err
 		}
-		return nil, fmt.Errorf("failed to save product to database: %w", err)
+		return nil, fmt.Errorf("failed to save product to database: %v", err)
 	}
 
 	return createdProdcut, nil

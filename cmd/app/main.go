@@ -11,23 +11,23 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/zhunismp/intent-products-api/internal/interfaces/db"
-	"github.com/zhunismp/intent-products-api/internal/interfaces/http/handlers"
 	"github.com/zhunismp/intent-products-api/internal/applications/interactors"
 	"github.com/zhunismp/intent-products-api/internal/infrastructure/client"
 	"github.com/zhunismp/intent-products-api/internal/infrastructure/config"
+	"github.com/zhunismp/intent-products-api/internal/interfaces/db"
+	"github.com/zhunismp/intent-products-api/internal/interfaces/http/handlers"
 )
 
 func main() {
 	cfg := config.Load()
 	log.Printf("🚀 Starting %s in %s mode...", cfg.AppName, cfg.Env) // TODO: replace with cool banner.
 
-	ctx, cancel := context.WithTimeout(context.Background(), 20 * time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 
 	// Initialize dependencies
 	mongoClient := client.NewMongoClient(ctx, cfg)
 	productRepository := db.NewProductRepositoryImpl(ctx, mongoClient.Database(cfg.Mongo.Database))
-	productService := interactors.NewProductUsecase(productRepository)
+	productService := interactors.NewProductUsecaseImpl(productRepository)
 	productHttpHandler := handlers.NewProductHttpHandler(productService)
 
 	// Initialize router

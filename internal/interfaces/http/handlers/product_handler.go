@@ -31,14 +31,27 @@ func (h *ProductHttpHandler) CreateProduct(w http.ResponseWriter, r *http.Reques
 	var req transport.CreateProductRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		// TODO: add logging
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(400)
+		json.NewEncoder(w).Encode(transport.ErrorResponse{
+			StatusCode:   400,
+			ErrorMessage: "Invalid request body",
+		})
+
+		return
+	}
+
+	// For debug purpose
+	b, _ := json.Marshal(req)
+	log.Println(string(b))
+
+	input, err := transformer.ToCreateProductInput(req)
+	if err != nil {
 		writeError(w, err)
 		return
 	}
 
-	b, _ := json.Marshal(req)
-	log.Println(string(b))
-
-	createdProduct, err := h.productUsecase.CreateProduct(ctx, transformer.ToCreateProductInput(req))
+	createdProduct, err := h.productUsecase.CreateProduct(ctx, input)
 	if err != nil {
 		writeError(w, err)
 		return
