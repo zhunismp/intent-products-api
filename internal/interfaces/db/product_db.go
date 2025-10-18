@@ -40,7 +40,7 @@ func (r *ProductRepositoryImpl) CreateProduct(ctx context.Context, product entit
 func applyIndex(ctx context.Context, collection *mongo.Collection) error {
 	model := mongo.IndexModel{
 		Keys: bson.D{
-			{Key: "product_id", Value: 1},
+			{Key: "name", Value: 1},
 			{Key: "owner_id", Value: 1},
 		},
 		Options: options.Index().SetUnique(true).SetName("unique_user_product"),
