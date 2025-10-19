@@ -45,8 +45,8 @@ func (s *ProductUsecaseImpl) CreateProduct(ctx context.Context, createProductInp
 	currTime := time.Now()
 
 	product := entities.Product{
-		ID:        utils.GenULID(time.Now()),
-		OwnerID:   "101234567890123456789", // hardcoded google oauth's sub
+		ID:        utils.GenULID(currTime),
+		OwnerID:   createProductInput.OwnerID,
 		Name:      createProductInput.Title,
 		ImageUrl:  nil,
 		Link:      createProductInput.Link,

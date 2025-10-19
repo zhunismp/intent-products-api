@@ -7,6 +7,7 @@ import (
 
 func ToCreateProductInput(req transport.CreateProductRequest) (dtos.CreateProductInput, error) {
 	return dtos.CreateProductInput{
+		OwnerID: "101234567890123456789", // hardcoded google oauth's sub
 		Title:   req.Title,
 		Price:   req.Price,
 		Link:    req.Link,
