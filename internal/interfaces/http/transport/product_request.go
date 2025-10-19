@@ -7,3 +7,7 @@ type CreateProductRequest struct {
 	Link    *string  `json:"link"`
 	Reasons []string `json:"reasons"`
 }
+
+type DeleteProductRequest struct {
+	ProductID string `json:"product_id"`
+}

@@ -82,3 +82,7 @@ func (s *ProductUsecaseImpl) QueryProduct(ctx context.Context, queryProductInput
 
 	return products, nil
 }
+
+func (s *ProductUsecaseImpl) DeleteProduct(ctx context.Context, deleteProductInput dtos.DeleteProductInput) error {
+	return s.productRepo.DeleteProduct(ctx, deleteProductInput)
+}

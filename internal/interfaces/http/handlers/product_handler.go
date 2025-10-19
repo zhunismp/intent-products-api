@@ -77,6 +77,33 @@ func (h *ProductHttpHandler) QueryProduct(w http.ResponseWriter, r *http.Request
 	writeResponse(w, resp, "query product successfully", http.StatusOK, transformer.ToPagination(input.Pagination))
 }
 
+func (h *ProductHttpHandler) DeleteProduct(w http.ResponseWriter, r *http.Request) {
+	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
+	defer func() {
+		cancel()
+	}()
+
+	var req transport.DeleteProductRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		// TODO: add logging
+		writeError(w, domainerrors.ErrorProductInput)
+		return
+	}
+
+	input, err := transformer.ToDeleteProductInput(req)
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+
+	if err := h.productUsecase.DeleteProduct(ctx, input); err != nil {
+		writeError(w, err)
+		return
+	}
+
+	writeResponse(w, nil, "product deleted successfully", 200, nil)
+}
+
 func writeError(w http.ResponseWriter, err error) {
 	w.Header().Set("Content-Type", "application/json")
 
