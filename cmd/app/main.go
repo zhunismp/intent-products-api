@@ -86,6 +86,7 @@ func initalizeRoutes(r chi.Router, productHttpHandler *handlers.ProductHttpHandl
 	r.Route("/api/v1/products", func(r chi.Router) {
 		r.Post("/", productHttpHandler.CreateProduct)
 		r.Get("/", productHttpHandler.QueryProduct)
+		r.Delete("/", productHttpHandler.DeleteProduct)
 	})
 
 	// health check routes

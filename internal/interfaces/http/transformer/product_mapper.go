@@ -35,6 +35,13 @@ func ToQueryProductInput(q url.Values) (*dtos.QueryProductInput, error) {
 	return input, nil
 }
 
+func ToDeleteProductInput(req transport.DeleteProductRequest) (dtos.DeleteProductInput, error) {
+	return dtos.DeleteProductInput{
+		OwnerID:   hardcodedUserID,
+		ProductID: req.ProductID,
+	}, nil
+}
+
 func ToPagination(pagination *dtos.Pagination) *transport.Pagination {
 	if pagination == nil {
 		return nil

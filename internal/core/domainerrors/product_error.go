@@ -36,4 +36,10 @@ var (
 		"product input is invalid",
 		400,
 	)
+
+	ErrorIllegalExecution = NewDomainError(
+		"e00004",
+		"user are not allowed to execute this action",
+		400,
+	)
 )

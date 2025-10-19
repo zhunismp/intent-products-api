@@ -45,6 +45,7 @@ func (r *ProductRepositoryImpl) QueryProduct(ctx context.Context, query dtos.Que
 	if query.Pagination != nil {
 		findOptions.SetSkip(int64((query.Pagination.Page - 1) * query.Pagination.Size))
 		findOptions.SetLimit(int64(query.Pagination.Size))
+		findOptions.SetSort(bson.D{{Key: "added_at", Value: -1}})
 	}
 
 	// filter
@@ -61,6 +62,27 @@ func (r *ProductRepositoryImpl) QueryProduct(ctx context.Context, query dtos.Que
 	}
 
 	return products, nil
+}
+
+func (r *ProductRepositoryImpl) DeleteProduct(ctx context.Context, input dtos.DeleteProductInput) error {
+	// filter user id and product id
+	filter := bson.M{
+		"id":       input.ProductID,
+		"owner_id": input.OwnerID,
+	}
+
+	// delete
+	result, err := r.collection.DeleteOne(ctx, filter)
+	if err != nil {
+		return fmt.Errorf("failed to delete product: %w", err)
+	}
+
+	// user delete product which is not belong to user.
+	if result.DeletedCount == 0 {
+		return domainerrors.ErrorIllegalExecution
+	}
+
+	return nil
 }
 
 func applyIndex(ctx context.Context, collection *mongo.Collection) error {
