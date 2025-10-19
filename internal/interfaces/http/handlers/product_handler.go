@@ -53,7 +53,28 @@ func (h *ProductHttpHandler) CreateProduct(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	writeResponse(w, createdProduct, "product created", http.StatusOK)
+	writeResponse(w, createdProduct, "product created", http.StatusCreated)
+}
+
+func (h *ProductHttpHandler) QueryProduct(w http.ResponseWriter, r *http.Request) {
+	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
+	defer func() {
+		cancel()
+	}()
+
+	input, err := transformer.ToQueryProductInput(r.URL.Query())
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+
+	resp, err := h.productUsecase.QueryProduct(ctx, input)
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+
+	writeResponse(w, resp, "query product successfully", http.StatusOK)
 }
 
 func writeError(w http.ResponseWriter, err error) {

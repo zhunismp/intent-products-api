@@ -3,7 +3,7 @@ package entities
 type Status string
 
 const (
-	STAGING string = "staging"
-	VALID   string = "valid"
-	BOUGHT  string = "bought"
+	STAGING Status = "staging"
+	VALID   Status = "valid"
+	BOUGHT  Status = "bought"
 )
