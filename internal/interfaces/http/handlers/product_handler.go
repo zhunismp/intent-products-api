@@ -3,10 +3,12 @@ package handlers
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"log"
 	"net/http"
 	"time"
 
+	"github.com/zhunismp/intent-products-api/internal/core/domainerrors"
 	"github.com/zhunismp/intent-products-api/internal/core/usecases"
 	"github.com/zhunismp/intent-products-api/internal/interfaces/http/transformer"
 	"github.com/zhunismp/intent-products-api/internal/interfaces/http/transport"
@@ -31,13 +33,7 @@ func (h *ProductHttpHandler) CreateProduct(w http.ResponseWriter, r *http.Reques
 	var req transport.CreateProductRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		// TODO: add logging
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(400)
-		json.NewEncoder(w).Encode(transport.ErrorResponse{
-			StatusCode:   400,
-			ErrorMessage: "Invalid request body",
-		})
-
+		writeError(w, domainerrors.ErrorProductInput)
 		return
 	}
 
@@ -57,22 +53,43 @@ func (h *ProductHttpHandler) CreateProduct(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	writeResponse(w, createdProduct, "product created")
+	writeResponse(w, createdProduct, "product created", http.StatusOK)
 }
 
 func writeError(w http.ResponseWriter, err error) {
-	errResponse := transformer.ToErrorResponse(err)
-
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(errResponse.StatusCode)
-	json.NewEncoder(w).Encode(errResponse)
+
+	// default 500 error
+	resp := transport.ErrorResponse{
+		StatusCode:   http.StatusInternalServerError,
+		ErrorMessage: "Something went wrong",
+	}
+
+	// enrich domain error
+	var derr *domainerrors.DomainError
+	if errors.As(err, &derr) {
+		resp.StatusCode = derr.StatusCode
+		resp.ErrorMessage = derr.Message
+	}
+
+	// write error
+	w.WriteHeader(resp.StatusCode)
+	if encodeErr := json.NewEncoder(w).Encode(resp); encodeErr != nil {
+		http.Error(w, `{"error":"failed to encode error response"}`, http.StatusInternalServerError)
+	}
 }
 
-func writeResponse(w http.ResponseWriter, data any, message string) {
-	response := transformer.ToResponse(data, message)
+func writeResponse(w http.ResponseWriter, data any, message string, status int) {
+	resp := transport.SuccessResponse{
+		StatusCode: status,
+		Message:    message,
+		Data:       data,
+	}
 
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(200)
-	json.NewEncoder(w).Encode(response)
+	w.WriteHeader(status)
+	if encodeErr := json.NewEncoder(w).Encode(resp); encodeErr != nil {
+		http.Error(w, `{"error":"failed to encode error response"}`, http.StatusInternalServerError)
+	}
 
 }

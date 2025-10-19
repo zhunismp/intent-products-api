@@ -30,7 +30,7 @@ func (s *ProductUsecaseImpl) CreateProduct(ctx context.Context, createProductInp
 
 	// validate request
 	if err := validators.ValidateCreateProductReq(createProductInput); err != nil {
-		return nil, domainerrors.ErrorProducInput
+		return nil, domainerrors.ErrorProductInput
 	}
 
 	// transform to core model
