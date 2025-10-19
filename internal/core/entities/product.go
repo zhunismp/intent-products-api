@@ -5,8 +5,8 @@ import (
 )
 
 type Product struct {
-	ID        int64     `bson:"id"`
-	OwnerID   int64     `bson:"owner_id"`
+	ID        string    `bson:"id"`
+	OwnerID   string    `bson:"owner_id"`
 	Name      string    `bson:"name"`
 	ImageUrl  *string   `bson:"image_url,omitempty"`
 	Link      *string   `bson:"link,omitempty"`
