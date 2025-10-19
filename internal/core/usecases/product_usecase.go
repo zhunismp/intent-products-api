@@ -9,4 +9,5 @@ import (
 
 type ProductUsecase interface {
 	CreateProduct(context.Context, dtos.CreateProductInput) (*entities.Product, error)
+	QueryProduct(context.Context, dtos.QueryProductInput) ([]entities.Product, error)
 }

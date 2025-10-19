@@ -13,7 +13,7 @@ type Product struct {
 	Price     float64   `bson:"price"`
 	AddedAt   time.Time `bson:"added_at"`
 	UpdatedAt time.Time `bson:"updated_at"`
-	Status    string    `bson:"status"`
+	Status    Status    `bson:"status"`
 	Causes    []Cause   `bson:"causes,omitempty"`
 }
 

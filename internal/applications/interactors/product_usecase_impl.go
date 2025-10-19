@@ -29,7 +29,7 @@ func NewProductUsecaseImpl(productRepo repositories.ProductRepository) usecases.
 func (s *ProductUsecaseImpl) CreateProduct(ctx context.Context, createProductInput dtos.CreateProductInput) (*entities.Product, error) {
 
 	// validate request
-	if err := validators.ValidateCreateProductReq(createProductInput); err != nil {
+	if err := validators.ValidateCreateProductInput(createProductInput); err != nil {
 		return nil, domainerrors.ErrorProductInput
 	}
 
@@ -66,4 +66,19 @@ func (s *ProductUsecaseImpl) CreateProduct(ctx context.Context, createProductInp
 	}
 
 	return createdProdcut, nil
+}
+
+func (s *ProductUsecaseImpl) QueryProduct(ctx context.Context, queryProductInput dtos.QueryProductInput) ([]entities.Product, error) {
+	// validate request
+	if err := validators.ValidateQueryProductInput(queryProductInput); err != nil {
+		return []entities.Product{}, domainerrors.ErrorProductInput
+	}
+
+	// perform query
+	products, err := s.productRepo.QueryProduct(ctx, queryProductInput)
+	if err != nil {
+		return []entities.Product{}, fmt.Errorf("failed to query product from database: %v", err)
+	}
+
+	return products, nil
 }
