@@ -53,7 +53,7 @@ func (h *ProductHttpHandler) CreateProduct(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	writeResponse(w, createdProduct, "product created", http.StatusCreated)
+	writeResponse(w, createdProduct, "product created", http.StatusCreated, nil)
 }
 
 func (h *ProductHttpHandler) QueryProduct(w http.ResponseWriter, r *http.Request) {
@@ -68,13 +68,13 @@ func (h *ProductHttpHandler) QueryProduct(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	resp, err := h.productUsecase.QueryProduct(ctx, input)
+	resp, err := h.productUsecase.QueryProduct(ctx, *input)
 	if err != nil {
 		writeError(w, err)
 		return
 	}
 
-	writeResponse(w, resp, "query product successfully", http.StatusOK)
+	writeResponse(w, resp, "query product successfully", http.StatusOK, transformer.ToPagination(input.Pagination))
 }
 
 func writeError(w http.ResponseWriter, err error) {
@@ -100,11 +100,12 @@ func writeError(w http.ResponseWriter, err error) {
 	}
 }
 
-func writeResponse(w http.ResponseWriter, data any, message string, status int) {
+func writeResponse(w http.ResponseWriter, data any, message string, status int, pagination *transport.Pagination) {
 	resp := transport.SuccessResponse{
 		StatusCode: status,
 		Message:    message,
 		Data:       data,
+		Pagination: pagination,
 	}
 
 	w.Header().Set("Content-Type", "application/json")
