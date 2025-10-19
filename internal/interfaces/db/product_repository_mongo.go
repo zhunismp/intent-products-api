@@ -41,9 +41,14 @@ func (r *ProductRepositoryImpl) CreateProduct(ctx context.Context, product entit
 
 func (r *ProductRepositoryImpl) QueryProduct(ctx context.Context, query dtos.QueryProductInput) ([]entities.Product, error) {
 	filter := generateFilters(query)
+	findOptions := options.Find()
+	if query.Pagination != nil {
+		findOptions.SetSkip(int64((query.Pagination.Page - 1) * query.Pagination.Size))
+		findOptions.SetLimit(int64(query.Pagination.Size))
+	}
 
 	// filter
-	cursor, err := r.collection.Find(ctx, filter)
+	cursor, err := r.collection.Find(ctx, filter, findOptions)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query products: %w", err)
 	}
