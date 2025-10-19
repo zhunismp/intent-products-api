@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/bwmarrin/snowflake"
+	"github.com/zhunismp/intent-products-api/internal/applications/utils"
 	"github.com/zhunismp/intent-products-api/internal/applications/validators"
 	"github.com/zhunismp/intent-products-api/internal/core/repositories"
 
@@ -33,11 +33,6 @@ func (s *ProductUsecaseImpl) CreateProduct(ctx context.Context, createProductInp
 		return nil, domainerrors.ErrorProducInput
 	}
 
-	node, err := snowflake.NewNode(1)
-	if err != nil {
-		return nil, fmt.Errorf("error while get node from snowflake: %v", err)
-	}
-
 	// transform to core model
 	causes := make([]entities.Cause, len(createProductInput.Reasons))
 	for i, reason := range createProductInput.Reasons {
@@ -50,8 +45,8 @@ func (s *ProductUsecaseImpl) CreateProduct(ctx context.Context, createProductInp
 	currTime := time.Now()
 
 	product := entities.Product{
-		ID:        node.Generate().Int64(),
-		OwnerID:   createProductInput.UserID,
+		ID:        utils.GenULID(time.Now()),
+		OwnerID:   "101234567890123456789", // hardcoded google oauth's sub
 		Name:      createProductInput.Title,
 		ImageUrl:  nil,
 		Link:      createProductInput.Link,
@@ -62,7 +57,7 @@ func (s *ProductUsecaseImpl) CreateProduct(ctx context.Context, createProductInp
 		Causes:    causes,
 	}
 
-	createdProdcut, err := s.productRepo.CreateProduct(ctx, product) 
+	createdProdcut, err := s.productRepo.CreateProduct(ctx, product)
 	if err != nil {
 		if errors.Is(err, domainerrors.ErrorDuplicateProduct) {
 			return nil, err
