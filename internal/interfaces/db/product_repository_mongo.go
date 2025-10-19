@@ -45,6 +45,7 @@ func (r *ProductRepositoryImpl) QueryProduct(ctx context.Context, query dtos.Que
 	if query.Pagination != nil {
 		findOptions.SetSkip(int64((query.Pagination.Page - 1) * query.Pagination.Size))
 		findOptions.SetLimit(int64(query.Pagination.Size))
+		findOptions.SetSort(bson.D{{Key: "added_at", Value: -1}})
 	}
 
 	// filter
