@@ -1,12 +1,24 @@
-package config
+package infrastructure
 
-type Config struct {
-    AppName   string `mapstructure:"APP_NAME"`
-    Env       string `mapstructure:"APP_ENV"`
-    HTTPPort  int    `mapstructure:"HTTP_PORT"`
+type ServerConfig struct {
+	Env           string
+	Name          string
+	Host          string
+	Port          string
+	BaseApiPrefix string
+}
 
-    Mongo struct {
-        URI      string `mapstructure:"MONGO_URI"`
-        Database string `mapstructure:"MONGO_DB"`
-    } `mapstructure:",squash"`
+type DatabaseConfig struct {
+	Host     string
+	Port     string
+	User     string
+	Password string
+	Name     string
+	SSLMode  string
+	Timezone string
+}
+
+type AppEnvConfig struct {
+	serverCfg *ServerConfig
+	dbCfg     *DatabaseConfig
 }
