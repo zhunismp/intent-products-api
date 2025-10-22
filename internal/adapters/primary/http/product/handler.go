@@ -6,7 +6,6 @@ import (
 	"github.com/gofiber/fiber/v3"
 	core "github.com/zhunismp/intent-products-api/internal/core/domain/product"
 	"github.com/zhunismp/intent-products-api/internal/core/domain/shared/apperrors"
-	"go.uber.org/zap"
 )
 
 // for development purpose.
@@ -16,11 +15,8 @@ type ProductHttpHandler struct {
 	productSvc core.ProductUsecase
 }
 
-func NewProductHttpHandler(productSvc core.ProductUsecase, logger *zap.Logger) *ProductHttpHandler {
-	return &ProductHttpHandler{
-		productSvc: productSvc,
-		logger:     logger,
-	}
+func NewProductHttpHandler(productSvc core.ProductUsecase) *ProductHttpHandler {
+	return &ProductHttpHandler{productSvc: productSvc}
 }
 
 func (h *ProductHttpHandler) CreateProduct(c fiber.Ctx) error {

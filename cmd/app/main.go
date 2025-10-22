@@ -35,7 +35,7 @@ func main() {
 
 	productDbRepo := NewProductRepository(initDbCtx, db)
 	productSvc := NewProductService(productDbRepo)
-	productHttp := NewProductHttpHandler(productSvc, log)
+	productHttp := NewProductHttpHandler(productSvc)
 
 	routeGroup := NewRouteGroup(productHttp)
 
