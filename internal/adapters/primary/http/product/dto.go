@@ -2,35 +2,19 @@ package product
 
 import (
 	"time"
-
-	validation "github.com/go-ozzo/ozzo-validation/v4"
 )
 
 type QueryProductRequest struct {
-	Start  *time.Time `json:"start"`
-	End    *time.Time `json:"end"`
-	Status *string    `json:"status"`
-}
-
-func (r QueryProductRequest) Validate() error {
-	return validation.ValidateStruct(&r,
-		validation.Field(&r.End, validation.When(r.End != nil && r.Start != nil, validation.Min(r.Start))),
-		validation.Field(&r.Status, validation.When(r.Status != nil, validation.In("staging", "valid", "bought"))),
-	)
+	Start  *time.Time `json:"start" validate:"omitempty"`
+	End    *time.Time `json:"end" validate:"omitempty,gtfield=Start"`
+	Status *string    `json:"status" validate:"omitempty,oneof=staging valid bought"`
 }
 
 type CreateProductRequest struct {
-	Title   string   `json:"title"`
-	Price   float64  `json:"price"`
-	Link    *string  `json:"link"`
-	Reasons []string `json:"reasons"`
-}
-
-func (r CreateProductRequest) Validate() error {
-	return validation.ValidateStruct(&r,
-		validation.Field(&r.Title, validation.Required),
-		validation.Field(&r.Price, validation.Min(1)),
-	)
+	Title   string   `json:"title" validate:"required"`
+	Price   float64  `json:"price" validate:"min=1"`
+	Link    *string  `json:"link" validate:"omitempty,url"`
+	Reasons []string `json:"reasons" validate:"omitempty,dive,required"`
 }
 
 type DeleteProductRequest struct {
@@ -39,11 +23,16 @@ type DeleteProductRequest struct {
 
 type UpdateProductRequest struct{}
 
+type SuccessResponse struct {
+	Message string `json:"message"`
+	Data    any    `json:"data"`
+}
+
 type ErrorResponse struct {
 	ErrorMessage string `json:"errorMessage"`
 }
 
-type SuccessResponse struct {
-	Message string `json:"message"`
-	Data    any    `json:"data"`
+type ValidationErrorResponse struct {
+	ErrorMessage string            `json:"errorMessage"`
+	ErrorFields  map[string]string `json:"errorFields"`
 }

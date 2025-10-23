@@ -58,6 +58,10 @@ func (s *productService) QueryProduct(ctx context.Context, cmd QueryProductCmd) 
 	return s.productRepo.QueryProduct(ctx, spec)
 }
 
+func (s *productService) GetProduct(ctx context.Context, cmd GetProductCmd) (*Product, error) {
+	return s.productRepo.GetProduct(ctx, cmd.OwnerID, cmd.ProductID)
+}
+
 func (s *productService) DeleteProduct(ctx context.Context, cmd DeleteProductCmd) error {
 	return s.productRepo.DeleteProduct(ctx, cmd.OwnerID, cmd.ProductID)
 }

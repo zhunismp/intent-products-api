@@ -3,6 +3,7 @@ package product
 import (
 	"errors"
 
+	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v3"
 	core "github.com/zhunismp/intent-products-api/internal/core/domain/product"
 	"github.com/zhunismp/intent-products-api/internal/core/domain/shared/apperrors"
@@ -27,6 +28,20 @@ func (h *ProductHttpHandler) CreateProduct(c fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(ErrorResponse{ErrorMessage: "can not parse request body"})
 	}
 
+	// validate req
+	validate := validator.New()
+	if err := validate.Struct(req); err != nil {
+		if errs, ok := err.(validator.ValidationErrors); ok {
+			errMap := GenerateErrorMap(errs)
+			return c.Status(fiber.StatusBadRequest).JSON(ValidationErrorResponse{
+				ErrorMessage: "invalid request",
+				ErrorFields:  errMap,
+			})
+		}
+
+		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{ErrorMessage: "something went wrong"})
+	}
+
 	// transform cmd
 	cmd := core.CreateProductCmd{
 		OwnerID: OwnerID,
@@ -47,8 +62,34 @@ func (h *ProductHttpHandler) CreateProduct(c fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{ErrorMessage: "something went wrong"})
 	}
 
-	return c.Status(200).JSON(SuccessResponse{
+	return c.Status(fiber.StatusOK).JSON(SuccessResponse{
 		Message: "product succesfully created",
+		Data:    product,
+	})
+}
+
+func (h *ProductHttpHandler) GetProduct(c fiber.Ctx) error {
+	id := c.Params("id")
+
+	// transform cmd
+	cmd := core.GetProductCmd{
+		OwnerID:   OwnerID,
+		ProductID: id,
+	}
+
+	// calling svc
+	product, err := h.productSvc.GetProduct(c.Context(), cmd)
+	if err != nil {
+		var appErr *apperrors.AppError
+		if errors.As(err, &appErr) {
+			return c.Status(apperrors.MapToHttpCode(appErr.Code)).JSON(ErrorResponse{ErrorMessage: appErr.Message})
+		}
+
+		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{ErrorMessage: "something went wrong"})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(SuccessResponse{
+		Message: "get product successfully",
 		Data:    product,
 	})
 }
@@ -59,6 +100,20 @@ func (h *ProductHttpHandler) QueryProduct(c fiber.Ctx) error {
 	// Parse request body
 	if err := c.Bind().Body(&req); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(ErrorResponse{ErrorMessage: "can not parse request body"})
+	}
+
+	// validate req
+	validate := validator.New()
+	if err := validate.Struct(req); err != nil {
+		if errs, ok := err.(validator.ValidationErrors); ok {
+			errMap := GenerateErrorMap(errs)
+			return c.Status(fiber.StatusBadRequest).JSON(ValidationErrorResponse{
+				ErrorMessage: "invalid request",
+				ErrorFields:  errMap,
+			})
+		}
+
+		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{ErrorMessage: "something went wrong"})
 	}
 
 	// transform cmd
