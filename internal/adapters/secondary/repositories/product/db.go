@@ -2,6 +2,7 @@ package product
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 
@@ -30,7 +31,7 @@ func NewProductRepository(ctx context.Context, db *mongo.Database) domain.Produc
 func (p *productRepository) CreateProduct(ctx context.Context, product domain.Product) (*domain.Product, error) {
 	_, err := p.collection.InsertOne(ctx, product)
 	if mongo.IsDuplicateKeyError(err) {
-		return nil, apperrors.New("FORBIDDEN", fmt.Sprintf("owner id %s attempted to create existing product name '%s'", product.OwnerID, product.Name), err)
+		return nil, apperrors.New(apperrors.ErrCodeForbidden, fmt.Sprintf("owner id %s attempted to create existing product name '%s'", product.OwnerID, product.Name), err)
 	}
 
 	return &product, err
@@ -42,17 +43,33 @@ func (p *productRepository) QueryProduct(ctx context.Context, spec domain.QueryP
 
 	cursor, err := p.collection.Find(ctx, filter, options)
 	if err != nil {
-		return nil, apperrors.New("INTERNAL_ERROR", "failed to query products: %w", err)
+		return nil, apperrors.New(apperrors.ErrCodeInternal, "failed to query products: %w", err)
 	}
 	defer cursor.Close(ctx)
 
 	// parsing
 	var products []domain.Product
 	if err := cursor.All(ctx, &products); err != nil {
-		return nil, apperrors.New("INTERNAL_ERROR", "failed to decode products", err)
+		return nil, apperrors.New(apperrors.ErrCodeInternal, "failed to decode products", err)
 	}
 
 	return products, nil
+}
+
+func (p *productRepository) GetProduct(ctx context.Context, ownerID string, productID string) (*domain.Product, error) {
+	filter := bson.M{
+		"id":       productID,
+		"owner_id": ownerID,
+	}
+
+	var product domain.Product
+	if err := p.collection.FindOne(ctx, filter).Decode(&product); err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			return nil, apperrors.New(apperrors.ErrCodeNotFound, fmt.Sprintf("owner id %s do not own product id %s", ownerID, productID), err)
+		}
+	}
+
+	return &product, nil
 }
 
 func (p *productRepository) DeleteProduct(ctx context.Context, ownerID string, productID string) error {
@@ -63,12 +80,12 @@ func (p *productRepository) DeleteProduct(ctx context.Context, ownerID string, p
 
 	result, err := p.collection.DeleteOne(ctx, filter)
 	if err != nil {
-		return apperrors.New("INTERNAL_ERROR", "failed to delete product: %w", err)
+		return apperrors.New(apperrors.ErrCodeInternal, "failed to delete product: %w", err)
 	}
 
 	// user delete product which is not belong to user.
 	if result.DeletedCount == 0 {
-		return apperrors.New("NOT_FOUND", fmt.Sprintf("owner id %s do not own product id %s", ownerID, productID), err)
+		return apperrors.New(apperrors.ErrCodeNotFound, fmt.Sprintf("owner id %s do not own product id %s", ownerID, productID), err)
 	}
 
 	return nil
