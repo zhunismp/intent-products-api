@@ -17,10 +17,6 @@ type CreateProductRequest struct {
 	Reasons []string `json:"reasons" validate:"omitempty,dive,required"`
 }
 
-type DeleteProductRequest struct {
-	ProductID string `params:"id"`
-}
-
 type UpdateProductRequest struct{}
 
 type SuccessResponse struct {
