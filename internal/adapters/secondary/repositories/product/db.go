@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -59,7 +58,6 @@ func (r *productRepository) QueryProduct(ctx context.Context, spec domain.QueryP
 	tx = tx.Order(clause.OrderByColumn{Column: clause.Column{Name: spec.Sort.Field}, Desc: spec.Sort.Direction == "desc"})
 
 	if err := tx.Find(&models).Error; err != nil {
-		log.Printf("err: %v", err)
 		return nil, apperrors.New(apperrors.ErrCodeInternal, "failed to query products", err)
 	}
 
