@@ -1,12 +1,10 @@
 package main
 
 import (
-	"context"
-	"time"
-
 	. "github.com/zhunismp/intent-products-api/internal/adapters/primary/http"
 	. "github.com/zhunismp/intent-products-api/internal/adapters/primary/http/product"
 	. "github.com/zhunismp/intent-products-api/internal/adapters/secondary/infrastructure/database"
+	. "github.com/zhunismp/intent-products-api/internal/adapters/secondary/repositories/cause"
 	. "github.com/zhunismp/intent-products-api/internal/adapters/secondary/repositories/product"
 	. "github.com/zhunismp/intent-products-api/internal/core/domain/product"
 	. "github.com/zhunismp/intent-products-api/internal/infrastructure/config"
@@ -19,9 +17,7 @@ func main() {
 		panic(err.Error())
 	}
 
-	initDbCtx, _ := context.WithTimeout(context.Background(), 15*time.Second)
-	db, closeConn := NewMongoDatabase(
-		initDbCtx,
+	db := NewPostgresDatabase(
 		cfg.GetDBHost(),
 		cfg.GetDBUser(),
 		cfg.GetDBPassword(),
@@ -33,8 +29,9 @@ func main() {
 	log := NewLogger(cfg.GetServerEnv())
 	baseApiPrefix := cfg.GetServerBaseApiPrefix()
 
-	productDbRepo := NewProductRepository(initDbCtx, db)
-	productSvc := NewProductService(productDbRepo)
+	productDbRepo := NewProductRepository(db)
+	causeDbRepo := NewCauseRepository(db)
+	productSvc := NewProductService(productDbRepo, causeDbRepo)
 	productHttp := NewProductHttpHandler(productSvc)
 
 	routeGroup := NewRouteGroup(productHttp)
@@ -42,12 +39,4 @@ func main() {
 	httpServer := NewHttpServer(cfg, log, baseApiPrefix)
 	httpServer.SetupRoute(routeGroup)
 	httpServer.Start()
-
-	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
-	defer func() {
-		// Other close connection func
-		log.Info("shutting down external dependencies connection.")
-		closeConn(ctx)
-		cancel()
-	}()
 }

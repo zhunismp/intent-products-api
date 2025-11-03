@@ -4,64 +4,110 @@ import (
 	"context"
 	"time"
 
-	"github.com/zhunismp/intent-products-api/internal/applications/utils"
+	"github.com/zhunismp/intent-products-api/internal/core/domain/shared/utils"
 )
 
 type productService struct {
 	productRepo ProductRepository
+	causeRepo   CauseRepository
 }
 
-func NewProductService(productRepo ProductRepository) ProductUsecase {
-	return &productService{productRepo: productRepo}
+func NewProductService(productRepo ProductRepository, causeRepo CauseRepository) ProductUsecase {
+	return &productService{
+		productRepo: productRepo,
+		causeRepo:   causeRepo,
+	}
 }
 
 func (s *productService) CreateProduct(ctx context.Context, cmd CreateProductCmd) (*Product, error) {
-	causes := make([]Cause, len(cmd.Reasons))
-	for i, reason := range cmd.Reasons {
-		causes[i] = Cause{
-			Reason: reason,
-			Status: true,
-		}
-	}
-
 	currTime := time.Now()
+	productID := utils.GenULID(currTime)
 
 	product := Product{
-		ID:        utils.GenULID(currTime),
+		ID:        productID,
 		OwnerID:   cmd.OwnerID,
 		Name:      cmd.Title,
 		ImageUrl:  nil,
 		Link:      cmd.Link,
 		Price:     cmd.Price,
-		AddedAt:   currTime,
+		CreatedAt: currTime,
 		UpdatedAt: currTime,
-		Status:    STAGING,
-		Causes:    causes,
+		Status:    PENDING,
 	}
 
-	return s.productRepo.CreateProduct(ctx, product)
+	causes := make([]Cause, len(cmd.Reasons))
+	for i, reason := range cmd.Reasons {
+		causes[i] = Cause{
+			ID:        utils.GenULID(time.Now()),
+			Reason:    reason,
+			Status:    true,
+		}
+	}
+
+	createdProduct, err := s.productRepo.CreateProduct(ctx, product)
+	if err != nil {
+		return nil, err
+	}
+
+	createdCause, err := s.causeRepo.CreateCauses(ctx, productID, causes)
+	if err != nil {
+		return nil, err
+	}
+
+	createdProduct.Causes = createdCause
+	return createdProduct, nil
 }
 
-func (s *productService) QueryProduct(ctx context.Context, cmd QueryProductCmd) ([]Product, error) {
-	// TODO: remove hardcoded sorting
+func (s *productService) QueryProducts(ctx context.Context, cmd QueryProductCmd) ([]Product, error) {
+	// default sorting field
+	sort := Sort{
+		Field:     "created_at",
+		Direction: "asc",
+	}
+
+	// apply sorting, if applicable.
+	if cmd.Sort != nil {
+		sort.Field = cmd.Sort.Field
+		sort.Direction = cmd.Sort.Direction
+	}
+
 	spec := QueryProductSpec{
 		OwnerID: cmd.OwnerID,
-		Start:   cmd.Filters.Start,
-		End:     cmd.Filters.End,
-		Status:  cmd.Filters.Status,
-		Sort: &Sorting{
-			SortField:     "added_at",
-			SortDirection: -1,
-		},
+		Start:   cmd.Start,
+		End:     cmd.End,
+		Status:  cmd.Status,
+		Sort:    sort,
 	}
 
 	return s.productRepo.QueryProduct(ctx, spec)
 }
 
 func (s *productService) GetProduct(ctx context.Context, cmd GetProductCmd) (*Product, error) {
-	return s.productRepo.GetProduct(ctx, cmd.OwnerID, cmd.ProductID)
+	product, err := s.productRepo.GetProduct(ctx, cmd.OwnerID, cmd.ProductID)
+	if err != nil {
+		return nil, err
+	}
+
+	causes, err := s.causeRepo.GetCauses(ctx, product.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	product.Causes = causes
+	return product, err
+}
+
+func (s *productService) UpdateProduct(ctx context.Context, cmd UpdateProductCmd) (*Product, error) {
+	return nil, nil
 }
 
 func (s *productService) DeleteProduct(ctx context.Context, cmd DeleteProductCmd) error {
-	return s.productRepo.DeleteProduct(ctx, cmd.OwnerID, cmd.ProductID)
+	if err := s.productRepo.DeleteProduct(ctx, cmd.OwnerID, cmd.ProductID); err != nil {
+		return err
+	}
+	if err := s.causeRepo.DeleteCausesByProductID(ctx, cmd.ProductID); err != nil {
+		return err
+	}
+
+	return nil
 }

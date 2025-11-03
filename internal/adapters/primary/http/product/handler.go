@@ -13,11 +13,16 @@ import (
 const OwnerID = "101234567890123456789"
 
 type ProductHttpHandler struct {
-	productSvc core.ProductUsecase
+	productSvc   core.ProductUsecase
+	reqValidator *validator.Validate
 }
 
 func NewProductHttpHandler(productSvc core.ProductUsecase) *ProductHttpHandler {
-	return &ProductHttpHandler{productSvc: productSvc}
+	// setup validator
+	validate := validator.New()
+	validate.RegisterValidation("date_after_opt", IsDateAfter)
+
+	return &ProductHttpHandler{productSvc: productSvc, reqValidator: validate}
 }
 
 func (h *ProductHttpHandler) CreateProduct(c fiber.Ctx) error {
@@ -29,8 +34,7 @@ func (h *ProductHttpHandler) CreateProduct(c fiber.Ctx) error {
 	}
 
 	// validate req
-	validate := validator.New()
-	if err := validate.Struct(req); err != nil {
+	if err := h.reqValidator.Struct(req); err != nil {
 		if errs, ok := err.(validator.ValidationErrors); ok {
 			errMap := GenerateErrorMap(errs)
 			return c.Status(fiber.StatusBadRequest).JSON(ValidationErrorResponse{
@@ -103,8 +107,7 @@ func (h *ProductHttpHandler) QueryProduct(c fiber.Ctx) error {
 	}
 
 	// validate req
-	validate := validator.New()
-	if err := validate.Struct(req); err != nil {
+	if err := h.reqValidator.Struct(req); err != nil {
 		if errs, ok := err.(validator.ValidationErrors); ok {
 			errMap := GenerateErrorMap(errs)
 			return c.Status(fiber.StatusBadRequest).JSON(ValidationErrorResponse{
@@ -117,17 +120,24 @@ func (h *ProductHttpHandler) QueryProduct(c fiber.Ctx) error {
 	}
 
 	// transform cmd
+	var sort *core.Sort
+	if req.Sort != nil {
+		sort = &core.Sort{
+			Field:     req.Sort.Field,
+			Direction: req.Sort.Direction,
+		}
+	}
+
 	cmd := core.QueryProductCmd{
 		OwnerID: OwnerID,
-		Filters: core.QueryProductFilter{
-			Start:  req.Start,
-			End:    req.End,
-			Status: req.Status,
-		},
+		Start:   req.Start,
+		End:     req.End,
+		Status:  req.Status,
+		Sort:    sort,
 	}
 
 	// calling svc
-	products, err := h.productSvc.QueryProduct(c.Context(), cmd)
+	products, err := h.productSvc.QueryProducts(c.Context(), cmd)
 	if err != nil {
 		var appErr *apperrors.AppError
 		if errors.As(err, &appErr) {
