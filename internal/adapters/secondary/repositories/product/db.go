@@ -4,124 +4,106 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
+
+	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 
 	domain "github.com/zhunismp/intent-products-api/internal/core/domain/product"
 	"github.com/zhunismp/intent-products-api/internal/core/domain/shared/apperrors"
-	"go.mongodb.org/mongo-driver/v2/bson"
-	"go.mongodb.org/mongo-driver/v2/mongo"
-	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
 type productRepository struct {
-	collection *mongo.Collection
+	db *gorm.DB
 }
 
-func NewProductRepository(ctx context.Context, db *mongo.Database) domain.ProductRepository {
-	collection, err := NewProductCollectionBuilder(db).
-		SetIndex(ctx).
-		Build()
-	if err != nil {
-		log.Fatalf("failed to initialize product repository %v", err)
-	}
-
-	return &productRepository{collection: collection}
+func NewProductRepository(db *gorm.DB) domain.ProductRepository {
+	return &productRepository{db: db}
 }
 
-func (p *productRepository) CreateProduct(ctx context.Context, product domain.Product) (*domain.Product, error) {
-	_, err := p.collection.InsertOne(ctx, product)
-	if mongo.IsDuplicateKeyError(err) {
-		return nil, apperrors.New(apperrors.ErrCodeForbidden, fmt.Sprintf("owner id %s attempted to create existing product name '%s'", product.OwnerID, product.Name), err)
+func (r *productRepository) CreateProduct(ctx context.Context, product domain.Product) (*domain.Product, error) {
+	model := toProductModel(product)
+
+	if err := r.db.WithContext(ctx).Create(&model).Error; err != nil {
+		if errors.Is(err, gorm.ErrDuplicatedKey) {
+			return nil, apperrors.New(
+				apperrors.ErrCodeForbidden,
+				fmt.Sprintf("owner id %s attempted to create existing product name '%s'", product.OwnerID, product.Name),
+				err,
+			)
+		}
+		return nil, apperrors.New(apperrors.ErrCodeInternal, "failed to create product", err)
 	}
 
-	return &product, err
+	return toDomainProduct(model), nil
 }
 
-func (p *productRepository) QueryProduct(ctx context.Context, spec domain.QueryProductSpec) ([]domain.Product, error) {
-	filter := generateFilters(spec)
-	options := generateOptions(spec)
+// TODO: clean up logic here
+func (r *productRepository) QueryProduct(ctx context.Context, spec domain.QueryProductSpec) ([]domain.Product, error) {
+	var models []ProductModel
+	tx := r.db.WithContext(ctx).Where("owner_id = ?", spec.OwnerID)
 
-	cursor, err := p.collection.Find(ctx, filter, options)
-	if err != nil {
-		return nil, apperrors.New(apperrors.ErrCodeInternal, "failed to query products: %w", err)
-	}
-	defer cursor.Close(ctx)
-
-	// parsing
-	var products []domain.Product
-	if err := cursor.All(ctx, &products); err != nil {
-		return nil, apperrors.New(apperrors.ErrCodeInternal, "failed to decode products", err)
+	if spec.Status != nil {
+		tx = tx.Where("status = ?", *spec.Status)
 	}
 
+	switch {
+	case spec.Start != nil && spec.End != nil:
+		tx = tx.Where("created_at BETWEEN ? AND ?", spec.Start, spec.End)
+	case spec.Start != nil:
+		tx = tx.Where("created_at >= ?", spec.Start)
+	case spec.End != nil:
+		tx = tx.Where("created_at <= ?", spec.End)
+	}
+
+	tx = tx.Order(clause.OrderByColumn{Column: clause.Column{Name: spec.Sort.Field}, Desc: spec.Sort.Direction == "desc"})
+
+	if err := tx.Find(&models).Error; err != nil {
+		return nil, apperrors.New(apperrors.ErrCodeInternal, "failed to query products", err)
+	}
+
+	// Convert to domain entities
+	products := make([]domain.Product, 0, len(models))
+	for _, m := range models {
+		products = append(products, *toDomainProduct(m))
+	}
 	return products, nil
 }
 
-func (p *productRepository) GetProduct(ctx context.Context, ownerID string, productID string) (*domain.Product, error) {
-	filter := bson.M{
-		"id":       productID,
-		"owner_id": ownerID,
+func (r *productRepository) GetProduct(ctx context.Context, ownerID string, productID string) (*domain.Product, error) {
+	var model ProductModel
+	err := r.db.WithContext(ctx).
+		Where("id = ? AND owner_id = ?", productID, ownerID).
+		First(&model).Error
+
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, apperrors.New(
+			apperrors.ErrCodeNotFound,
+			fmt.Sprintf("owner id %s does not own product id %s", ownerID, productID),
+			err,
+		)
 	}
 
-	var product domain.Product
-	if err := p.collection.FindOne(ctx, filter).Decode(&product); err != nil {
-		if errors.Is(err, mongo.ErrNoDocuments) {
-			return nil, apperrors.New(apperrors.ErrCodeNotFound, fmt.Sprintf("owner id %s do not own product id %s", ownerID, productID), err)
-		}
-	}
-
-	return &product, nil
-}
-
-func (p *productRepository) DeleteProduct(ctx context.Context, ownerID string, productID string) error {
-	filter := bson.M{
-		"id":       productID,
-		"owner_id": ownerID,
-	}
-
-	result, err := p.collection.DeleteOne(ctx, filter)
 	if err != nil {
-		return apperrors.New(apperrors.ErrCodeInternal, "failed to delete product: %w", err)
+		return nil, apperrors.New(apperrors.ErrCodeInternal, "failed to get product", err)
 	}
 
-	// user delete product which is not belong to user.
-	if result.DeletedCount == 0 {
-		return apperrors.New(apperrors.ErrCodeNotFound, fmt.Sprintf("owner id %s do not own product id %s", ownerID, productID), err)
-	}
+	return toDomainProduct(model), nil
+}
 
+func (r *productRepository) DeleteProduct(ctx context.Context, ownerID string, productID string) error {
+	result := r.db.WithContext(ctx).
+		Where("id = ? AND owner_id = ?", productID, ownerID).
+		Delete(&ProductModel{})
+
+	if result.Error != nil {
+		return apperrors.New(apperrors.ErrCodeInternal, "failed to delete product", result.Error)
+	}
+	if result.RowsAffected == 0 {
+		return apperrors.New(
+			apperrors.ErrCodeNotFound,
+			fmt.Sprintf("owner id %s does not own product id %s", ownerID, productID),
+			nil,
+		)
+	}
 	return nil
-}
-
-func generateFilters(spec domain.QueryProductSpec) bson.M {
-	filter := bson.M{
-		"owner_id": spec.OwnerID,
-	}
-
-	if spec.Status != nil {
-		filter["status"] = spec.Status
-	}
-
-	// Build date range filter if at least one of start or end is provided
-	if spec.Start != nil || spec.End != nil {
-		dateFilter := bson.M{}
-		if spec.Start != nil {
-			dateFilter["$gte"] = spec.Start
-		}
-		if spec.End != nil {
-			dateFilter["$lte"] = spec.End
-		}
-		filter["added_at"] = dateFilter
-	}
-
-	return filter
-}
-
-func generateOptions(spec domain.QueryProductSpec) *options.FindOptionsBuilder {
-
-	if spec.Sort == nil {
-		return nil
-	}
-
-	return options.Find().
-		SetSort(bson.D{{Key: spec.Sort.SortField, Value: spec.Sort.SortDirection}})
-
 }

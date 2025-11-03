@@ -3,25 +3,26 @@ package product
 import "time"
 
 type Product struct {
-	ID        string    `bson:"id"`
-	OwnerID   string    `bson:"owner_id"`
-	Name      string    `bson:"name"`
-	ImageUrl  *string   `bson:"image_url,omitempty"`
-	Link      *string   `bson:"link,omitempty"`
-	Price     float64   `bson:"price"`
-	AddedAt   time.Time `bson:"added_at"`
-	UpdatedAt time.Time `bson:"updated_at"`
-	Status    string    `bson:"status"`
-	Causes    []Cause   `bson:"causes,omitempty"`
+	ID        string
+	OwnerID   string
+	Name      string
+	ImageUrl  *string
+	Link      *string
+	Price     float64
+	CreatedAt time.Time
+	UpdatedAt time.Time
+	Status    string
+	Causes    []Cause
 }
 
 type Cause struct {
-	Reason string `bson:"reason"`
-	Status bool   `bson:"status"`
+	ID        string
+	Reason    string
+	Status    bool
 }
 
 const (
-	STAGING string = "staging"
-	VALID   string = "valid"
-	BOUGHT  string = "bought"
+	PENDING     string = "pending"
+	INSTALLMENT string = "installment"
+	BOUGHT      string = "bought"
 )
