@@ -98,6 +98,43 @@ func (h *ProductHttpHandler) GetProduct(c fiber.Ctx) error {
 	})
 }
 
+func (h *ProductHttpHandler) UpdateCauseStatus(c fiber.Ctx) error {
+	req := new(UpdateCauseStatusRequest)
+
+	// parse request body
+	if err := c.Bind().Body(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(ErrorResponse{ErrorMessage: "can not parse request body"})
+	}
+
+	// transform cmd
+	causeStatus := core.CauseStatus{
+		CauseID: req.CauseStatus.CauseID,
+		Status: req.CauseStatus.Status,
+	}
+
+	cmd := core.UpdateCauseStatusCmd{
+		OwnerID:   OwnerID,
+		ProductID: req.ProductID,
+		CauseStatus: causeStatus,
+	}
+
+	// calling svc
+	product, err := h.productSvc.UpdateCauseStatus(c, cmd)
+	if err != nil {
+		var appErr *apperrors.AppError
+		if errors.As(err, &appErr) {
+			return c.Status(apperrors.MapToHttpCode(appErr.Code)).JSON(ErrorResponse{ErrorMessage: appErr.Message})
+		}
+
+		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{ErrorMessage: "something went wrong"})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(SuccessResponse{
+		Message: "cause status updated successfully",
+		Data:    product,
+	})
+}
+
 func (h *ProductHttpHandler) QueryProduct(c fiber.Ctx) error {
 	req := new(QueryProductRequest)
 

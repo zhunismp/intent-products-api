@@ -38,9 +38,9 @@ func (s *productService) CreateProduct(ctx context.Context, cmd CreateProductCmd
 	causes := make([]Cause, len(cmd.Reasons))
 	for i, reason := range cmd.Reasons {
 		causes[i] = Cause{
-			ID:        utils.GenULID(time.Now()),
-			Reason:    reason,
-			Status:    true,
+			ID:     utils.GenULID(time.Now()),
+			Reason: reason,
+			Status: true,
 		}
 	}
 
@@ -94,11 +94,21 @@ func (s *productService) GetProduct(ctx context.Context, cmd GetProductCmd) (*Pr
 	}
 
 	product.Causes = causes
-	return product, err
+	return product, nil
 }
 
-func (s *productService) UpdateProduct(ctx context.Context, cmd UpdateProductCmd) (*Product, error) {
-	return nil, nil
+func (s *productService) UpdateCauseStatus(ctx context.Context, cmd UpdateCauseStatusCmd) (*Cause, error) {
+	product, err := s.productRepo.GetProduct(ctx, cmd.OwnerID, cmd.ProductID)
+	if err != nil {
+		return nil, err
+	}
+
+	updatedCause, err := s.causeRepo.UpdateCauseStatus(ctx, product.ID, cmd.CauseStatus)
+	if err != nil {
+		return nil, err
+	}
+
+	return updatedCause, nil
 }
 
 func (s *productService) DeleteProduct(ctx context.Context, cmd DeleteProductCmd) error {

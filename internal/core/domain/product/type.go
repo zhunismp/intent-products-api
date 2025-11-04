@@ -13,7 +13,7 @@ type Sort struct {
 	Direction string
 }
 
-type UpdateCauseStatus struct {
+type CauseStatus struct {
 	CauseID string
 	Status  bool
 }
@@ -37,10 +37,10 @@ type GetProductCmd struct {
 	ProductID string
 }
 
-type UpdateProductCmd struct {
+type UpdateCauseStatusCmd struct {
 	OwnerID   string
 	ProductID string
-	Causes    []UpdateCauseStatus
+	CauseStatus    CauseStatus
 }
 
 type QueryProductCmd struct {

@@ -9,7 +9,7 @@ type ProductUsecase interface {
 	QueryProducts(context.Context, QueryProductCmd) ([]Product, error)
 	GetProduct(context.Context, GetProductCmd) (*Product, error)
 	DeleteProduct(context.Context, DeleteProductCmd) error
-	UpdateProduct(context.Context, UpdateProductCmd) (*Product, error)
+	UpdateCauseStatus(context.Context, UpdateCauseStatusCmd) (*Cause, error)
 }
 
 type ProductRepository interface {
@@ -22,6 +22,6 @@ type ProductRepository interface {
 type CauseRepository interface {
 	CreateCauses(context.Context, ProductId, []Cause) ([]Cause, error)
 	GetCauses(context.Context, ProductId) ([]Cause, error)
-	UpdateCauseStatus(context.Context, ProductId, []UpdateCauseStatus) ([]Cause, error)
+	UpdateCauseStatus(context.Context, ProductId, CauseStatus) (*Cause, error)
 	DeleteCausesByProductID(context.Context, ProductId) error
 }
