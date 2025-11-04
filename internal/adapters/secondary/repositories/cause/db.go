@@ -2,7 +2,6 @@ package cause
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	domain "github.com/zhunismp/intent-products-api/internal/core/domain/product"
@@ -56,19 +55,21 @@ func (r *causeRepository) UpdateCauseStatus(ctx context.Context, productID strin
 		Update("status", cause.Status).
 		Scan(&updatedModel)
 
+	// error from orm
 	if res.Error != nil {
-		if errors.Is(res.Error, gorm.ErrRecordNotFound) {
-			return nil, apperrors.New(
-				apperrors.ErrCodeNotFound,
-				fmt.Sprintf("no cause found with id %s for product %s", cause.CauseID, productID),
-				nil,
-			)
-		}
-
 		return nil, apperrors.New(
 			apperrors.ErrCodeInternal,
 			fmt.Sprintf("failed to update cause %s", cause.CauseID),
 			res.Error,
+		)
+	}
+
+	// error not found
+	if res.RowsAffected == 0 {
+		return nil, apperrors.New(
+			apperrors.ErrCodeNotFound,
+			fmt.Sprintf("no cause found with id %s for product %s", cause.CauseID, productID),
+			nil,
 		)
 	}
 
