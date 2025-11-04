@@ -4,14 +4,18 @@ import (
 	"time"
 )
 
+// model
+type Sorting struct {
+	Field     string `json:"field" validate:"required,oneof=title price created_at"`
+	Direction string `json:"direction" validate:"required,oneof=asc desc"`
+}
+
+// request
 type QueryProductRequest struct {
 	Start  *time.Time `json:"start" validate:"omitempty"`
 	End    *time.Time `json:"end" validate:"omitempty,date_after_opt=Start"`
 	Status *string    `json:"status" validate:"omitempty,oneof=staging valid bought"`
-	Sort   *struct {
-		Field     string `json:"field" validate:"required,oneof=title price created_at"`
-		Direction string `json:"direction" validate:"required,oneof=asc desc"`
-	} `json:"sort" validate:"omitempty,dive"`
+	Sort   *Sorting     `json:"sort" validate:"omitempty,dive"`
 }
 
 type CreateProductRequest struct {
@@ -22,11 +26,9 @@ type CreateProductRequest struct {
 }
 
 type UpdateCauseStatusRequest struct {
-	ProductID   string `json:"productId" validate:"required"`
-	CauseStatus struct {
-		CauseID string `json:"causeId" validate:"required"`
-		Status  bool   `json:"status" validate:"required"`
-	} `json:"causeStatus" vaidate:"required,dive"`
+	ProductID string `json:"productId" validate:"required"`
+	CauseID   string `json:"causeId" validate:"required"`
+	Status    bool   `json:"status" validate:"required"`
 }
 
 type SuccessResponse struct {

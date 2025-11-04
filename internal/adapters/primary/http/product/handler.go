@@ -106,15 +106,28 @@ func (h *ProductHttpHandler) UpdateCauseStatus(c fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(ErrorResponse{ErrorMessage: "can not parse request body"})
 	}
 
+	// validate req
+	if err := h.reqValidator.Struct(req); err != nil {
+		if errs, ok := err.(validator.ValidationErrors); ok {
+			errMap := GenerateErrorMap(errs)
+			return c.Status(fiber.StatusBadRequest).JSON(ValidationErrorResponse{
+				ErrorMessage: "invalid request",
+				ErrorFields:  errMap,
+			})
+		}
+
+		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{ErrorMessage: "something went wrong"})
+	}
+
 	// transform cmd
 	causeStatus := core.CauseStatus{
-		CauseID: req.CauseStatus.CauseID,
-		Status: req.CauseStatus.Status,
+		CauseID: req.CauseID,
+		Status:  req.Status,
 	}
 
 	cmd := core.UpdateCauseStatusCmd{
-		OwnerID:   OwnerID,
-		ProductID: req.ProductID,
+		OwnerID:     OwnerID,
+		ProductID:   req.ProductID,
 		CauseStatus: causeStatus,
 	}
 
