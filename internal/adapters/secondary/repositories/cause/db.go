@@ -46,43 +46,35 @@ func (r *causeRepository) GetCauses(ctx context.Context, productID string) ([]do
 	return results, nil
 }
 
-func (r *causeRepository) UpdateCauseStatus(ctx context.Context, productID string, causes []domain.UpdateCauseStatus) ([]domain.Cause, error) {
+func (r *causeRepository) UpdateCauseStatus(ctx context.Context, productID string, cause domain.CauseStatus) (*domain.Cause, error) {
 	tx := r.db.WithContext(ctx)
-	var updatedIds []string
 
-	for _, c := range causes {
-		res := tx.Model(&CauseModel{}).
-			Where("id = ? AND product_id = ?", c.CauseID, productID).
-			Updates(map[string]any{
-				"status": c.Status,
-			})
+	var updatedModel CauseModel
+	res := tx.Model(&CauseModel{}).
+		Where("id = ? AND product_id = ?", cause.CauseID, productID).
+		Update("status", cause.Status).
+		Scan(&updatedModel)
 
-		if res.Error != nil {
-			return nil, apperrors.New(apperrors.ErrCodeInternal,
-				fmt.Sprintf("failed to update cause %s", c.CauseID), res.Error)
-		}
-
-		if res.RowsAffected == 0 {
-			return nil, apperrors.New(apperrors.ErrCodeNotFound,
-				fmt.Sprintf("no cause found with id %s for product %s", c.CauseID, productID), nil)
-		}
-
-		updatedIds = append(updatedIds, c.CauseID)
+	// error from orm
+	if res.Error != nil {
+		return nil, apperrors.New(
+			apperrors.ErrCodeInternal,
+			fmt.Sprintf("failed to update cause %s", cause.CauseID),
+			res.Error,
+		)
 	}
 
-	// query update entry
-	var updatedModels []CauseModel
-	if err := tx.Where("id IN ?", updatedIds).Find(&updatedModels).Error; err != nil {
-		return nil, apperrors.New(apperrors.ErrCodeInternal, "failed to fetch updated causes", err)
+	// error not found
+	if res.RowsAffected == 0 {
+		return nil, apperrors.New(
+			apperrors.ErrCodeNotFound,
+			fmt.Sprintf("no cause found with id %s for product %s", cause.CauseID, productID),
+			nil,
+		)
 	}
 
-	// transform to domain model
-	updatedCauses := make([]domain.Cause, 0, len(updatedModels))
-	for _, m := range updatedModels {
-		updatedCauses = append(updatedCauses, *toDomainCause(m))
-	}
-
-	return updatedCauses, nil
+	updatedCause := toDomainCause(updatedModel)
+	return updatedCause, nil
 }
 
 func (r *causeRepository) DeleteCausesByProductID(ctx context.Context, productID string) error {
