@@ -11,7 +11,8 @@ on:
           - go
 
 jobs:
-  generate:
+  generate-go-client:
+    name: Generate golang client
     runs-on: ubuntu-latest
     env:
       SERVICE_NAME: productclient
@@ -48,6 +49,6 @@ jobs:
         run: |
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
-          git add -A
+          git add .
           git commit -m "update $SERVICE_NAME client from product-service"
           git push origin master
