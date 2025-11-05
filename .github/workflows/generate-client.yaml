@@ -37,7 +37,7 @@ jobs:
           echo "Adding GOPATH/bin to PATH..."
           export PATH="$PATH:$(go env GOPATH)/bin"
 
-          mkdir -p gen/client.gen.go
+          mkdir -p gen/productclient
           oapi-codegen --config ./docs/oapi-codegen.yaml ./docs/openapi.yaml > gen/productclient/client.gen.go
 
       - name: 'Upload Artifact'
