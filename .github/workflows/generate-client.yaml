@@ -21,7 +21,7 @@ jobs:
       - name: Checkout service repo
         uses: actions/checkout@v4
 
-      - name: Checkout api-clients repo
+      - name: Checkout repo
         uses: actions/checkout@v4
         with:
           repository: zhunismp/intent-api-clients
@@ -40,7 +40,7 @@ jobs:
           mkdir -p api-clients/go/$SERVICE_NAME
           oapi-codegen --config ./docs/oapi-codegen.yaml ./docs/openapi.yaml > api-clients/go/$SERVICE_NAME/client.gen.go
           cd api-clients/go/$SERVICE_NAME
-
+          cat ./api-clients/go/$SERVICE_NAME/client.gen.go
           go mod init github.com/zhunsimp/api-clients/go/$SERVICE_NAME || true
           go mod tidy
 
@@ -51,4 +51,4 @@ jobs:
           git config user.email "github-actions@github.com"
           git add .
           git commit -m "update $SERVICE_NAME client from product-service"
-          git push origin master
+          git push origin master || true
