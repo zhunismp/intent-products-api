@@ -1,0 +1,47 @@
+name: Manual Generate API Client
+
+on:
+  workflow_dispatch:
+    inputs:
+      language:
+        description: "Select which client(s) to generate"
+        required: true
+        type: choice
+        options:
+          - go
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    env:
+      SERVICE_NAME: product-client
+
+    steps:
+      - name: Checkout service repo
+        uses: actions/checkout@v4
+
+      - name: Checkout api-clients repo
+        uses: actions/checkout@v4
+        with:
+          repository: zhunismp/intent-api-clients
+          token: ${{ secrets.API_CLIENT_PAT }}
+          path: api-clients
+
+      - name: Generate Go client
+        if: ${{ github.event.inputs.language == 'go' }}
+        run: |
+          echo "Generating Go client..."
+          go install github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@latest
+          mkdir -p api-clients/go/$SERVICE_NAME
+          oapi-codegen --config ./api/oapi-codegen.yaml ./api/openapi.yaml > api-clients/go/$SERVICE_NAME/client.gen.go
+          cd api-clients/go/$SERVICE_NAME
+          go mod init github.com/zhunsimp/api-clients/go/$SERVICE_NAME || true
+          go mod tidy
+
+      - name: Commit and tag client
+        working-directory: api-clients
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git add .
+          git commit -m "update $SERVICE_NAME client from product-service"
