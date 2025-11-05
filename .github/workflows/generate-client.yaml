@@ -39,8 +39,8 @@ jobs:
 
           mkdir -p api-clients/go/$SERVICE_NAME
           oapi-codegen --config ./docs/oapi-codegen.yaml ./docs/openapi.yaml > api-clients/go/$SERVICE_NAME/client.gen.go
+          tree .
           cd api-clients/go/$SERVICE_NAME
-          cat client.gen.go
           go mod init github.com/zhunsimp/api-clients/go/$SERVICE_NAME || true
           go mod tidy
 
