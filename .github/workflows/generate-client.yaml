@@ -37,7 +37,7 @@ jobs:
           export PATH="$PATH:$(go env GOPATH)/bin"
 
           mkdir -p api-clients/go/$SERVICE_NAME
-          oapi-codegen --config ./api/oapi-codegen.yaml /docs/openapi.yaml > api-clients/go/$SERVICE_NAME/client.gen.go
+          oapi-codegen --config ./docs/oapi-codegen.yaml ./docs/openapi.yaml > api-clients/go/$SERVICE_NAME/client.gen.go
           cd api-clients/go/$SERVICE_NAME
 
           go mod init github.com/zhunsimp/api-clients/go/$SERVICE_NAME || true
