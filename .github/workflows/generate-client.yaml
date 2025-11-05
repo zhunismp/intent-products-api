@@ -45,6 +45,13 @@ jobs:
           go mod init github.com/zhunsimp/api-clients/go/$SERVICE_NAME || true
           go mod tidy
 
+      - name: 'Upload Artifact'
+        uses: actions/upload-artifact@v4
+        with:
+          name: gen
+          path: api-clients/go/$SERVICE_NAME/client.gen.go
+          retention-days: 1
+
       - name: Commit
         working-directory: api-clients
         run: |
