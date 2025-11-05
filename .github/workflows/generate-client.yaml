@@ -27,7 +27,8 @@ jobs:
           echo "Generating Go client..."
           mkdir -p gen/productclient
           go run github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@latest \
-            --config ./docs/oapi-codegen.yaml ./docs/openapi.yaml > gen/productclient/client.gen.go
+            --config ./docs/oapi-codegen.yaml ./docs/openapi.yaml > gen/productclient/client.gen.go 2> build/productclient/gen.log
+          cat build/productclient/gen.log || true
 
       - name: 'Upload Artifact'
         uses: actions/upload-artifact@v4
