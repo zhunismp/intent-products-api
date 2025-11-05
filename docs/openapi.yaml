@@ -1,0 +1,150 @@
+openapi: 3.1.0
+info:
+  title: Product API
+  version: 1.0.0
+  description: API for managing products.
+servers:
+  - url: http://localhost:8080
+    description: Local development server
+
+paths:
+  /api/v1/products/{id}:
+    get:
+      summary: Get product by ID
+      description: Returns detailed information about a specific product.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ULID of the product.
+          schema:
+            type: string
+            example: 01K9A8VFR70Q0WV1YQG2PBGZXY
+      responses:
+        "200":
+          description: Product found successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: get product successfully
+                  data:
+                    $ref: "#/components/schemas/Product"
+        "404":
+          description: Product not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Internal server error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+    delete:
+      summary: Delete product by ID
+      description: Deletes the specified product.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ULID of the product.
+          schema:
+            type: string
+            example: 01K9A8VFR70Q0WV1YQG2PBGZXY
+      responses:
+        "200":
+          description: Product deleted successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: product was deleted
+                  data:
+                    type: string
+                    description: ULID of the deleted product.
+                    example: 01K9A8VFR70Q0WV1YQG2PBGZXY
+        "404":
+          description: Product not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Internal server error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+components:
+  schemas:
+    Product:
+      type: object
+      properties:
+        ID:
+          type: string
+          description: ULID of the product.
+          example: 01K9A8VFR70Q0WV1YQG2PBGZXY
+        OwnerID:
+          type: string
+          example: "101234567890123456789"
+        Name:
+          type: string
+          example: Macbook Pro M4
+        ImageUrl:
+          type: string
+          nullable: true
+          example: " https://s3.amazonaws.com/bucketname/object-key.png"
+        Link:
+          type: string
+          format: uri
+          example: http://www.google.com
+        Price:
+          type: number
+          example: 368000
+        CreatedAt:
+          type: string
+          format: date-time
+          example: 2025-11-05T22:06:06.983756+07:00
+        UpdatedAt:
+          type: string
+          format: date-time
+          example: 2025-11-05T22:06:06.983756+07:00
+        Status:
+          type: string
+          enum: [pending, bought, installment]
+          example: pending
+        Causes:
+          type: array
+          items:
+            $ref: "#/components/schemas/Cause"
+
+    Cause:
+      type: object
+      properties:
+        ID:
+          type: string
+          description: ULID of the cause.
+          example: 01K9A8VFR7RPW591GSMWGDE934
+        Reason:
+          type: string
+          example: I want to look so coooooool
+        Status:
+          type: boolean
+          example: true
+
+    Error:
+      type: object
+      properties:
+        errorMessage:
+          type: string
+          example: error message
