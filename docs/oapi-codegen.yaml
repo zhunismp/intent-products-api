@@ -5,7 +5,7 @@ generate:
   models: true
   embedded-spec: false
 
-output: client.gen.go
+output: gen/productclient/client.gen.go
 
 output-options:
   skip-prune: false
