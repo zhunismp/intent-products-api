@@ -38,7 +38,7 @@ jobs:
           export PATH="$PATH:$(go env GOPATH)/bin"
 
           mkdir -p api-clients/go/$SERVICE_NAME
-          oapi-codegen --config ./docs/oapi-codegen.yaml ./docs/openapi.yaml > api-clients/go/$SERVICE_NAME/client.gen.go
+          oapi-codegen --config ./docs/oapi-codegen.yaml ./docs/openapi.yaml > gen/client.gen.go
           tree .
           cat ./api-clients/go/$SERVICE_NAME/client.gen.go
           cd api-clients/go/$SERVICE_NAME
@@ -48,15 +48,40 @@ jobs:
       - name: 'Upload Artifact'
         uses: actions/upload-artifact@v4
         with:
-          name: gen
-          path: api-clients/go/$SERVICE_NAME/client.gen.go
+          name: productclient
+          path: gen/
           retention-days: 1
 
-      - name: Commit
-        working-directory: api-clients
+  publish:
+    name: Commit client to api-clients repo
+    runs-on: ubuntu-latest
+    needs: generate
+
+    steps:
+      - name: Checkout api-clients repo
+        uses: actions/checkout@v4
+        with:
+          repository: zhunismp/intent-api-clients
+          token: ${{ secrets.API_CLIENTS_TOKEN }}
+          path: api-clients
+
+      - name: Download generated artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: productclient
+          path: ./productclient
+
+      - name: Move artifact into repo
         run: |
-          git config user.name "github-actions"
-          git config user.email "github-actions@github.com"
-          git add .
-          git commit -m "update $SERVICE_NAME client from product-service"
-          git push origin master || true
+          mkdir -p api-clients/go/products
+          mv productclient/* api-clients/go/products/
+
+      - name: Commit and push
+        run: |
+          cd api-clients
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git add -A
+          git commit -m "chore(products): regenerate product client" || echo "No changes"
+          git push origin main || echo "Nothing to push"
