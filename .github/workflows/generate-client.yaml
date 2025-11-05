@@ -55,7 +55,7 @@ jobs:
   publish:
     name: Commit client to api-clients repo
     runs-on: ubuntu-latest
-    needs: generate
+    needs: generate-go-client
 
     steps:
       - name: Checkout api-clients repo
