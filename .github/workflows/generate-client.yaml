@@ -21,24 +21,13 @@ jobs:
       - name: Checkout service repo
         uses: actions/checkout@v4
 
-      - name: Checkout repo
-        uses: actions/checkout@v4
-        with:
-          repository: zhunismp/intent-api-clients
-          token: ${{ secrets.API_CLIENT_PAT }}
-          path: api-clients
-
       - name: Generate Go client
         if: ${{ github.event.inputs.language == 'go' }}
         run: |
           echo "Generating Go client..."
-          go install github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@latest
-
-          echo "Adding GOPATH/bin to PATH..."
-          export PATH="$PATH:$(go env GOPATH)/bin"
-
           mkdir -p gen/productclient
-          oapi-codegen --config ./docs/oapi-codegen.yaml ./docs/openapi.yaml > gen/productclient/client.gen.go
+          go run github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@latest \
+            --config ./docs/oapi-codegen.yaml ./docs/openapi.yaml > gen/productclient/client.gen.go
 
       - name: 'Upload Artifact'
         uses: actions/upload-artifact@v4
@@ -57,7 +46,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: zhunismp/intent-api-clients
-          token: ${{ secrets.API_CLIENTS_TOKEN }}
+          token: ${{ secrets.API_CLIENT_PAT }}
           path: api-clients
 
       - name: Download generated artifact
