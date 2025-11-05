@@ -1,4 +1,4 @@
-name: Manual Generate API Client
+name: Generate API Client
 
 on:
   workflow_dispatch:
@@ -32,9 +32,14 @@ jobs:
         run: |
           echo "Generating Go client..."
           go install github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@latest
+
+          echo "Adding GOPATH/bin to PATH..."
+          export PATH="$PATH:$(go env GOPATH)/bin"
+
           mkdir -p api-clients/go/$SERVICE_NAME
           oapi-codegen --config ./api/oapi-codegen.yaml ./api/openapi.yaml > api-clients/go/$SERVICE_NAME/client.gen.go
           cd api-clients/go/$SERVICE_NAME
+
           go mod init github.com/zhunsimp/api-clients/go/$SERVICE_NAME || true
           go mod tidy
 
