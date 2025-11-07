@@ -87,7 +87,6 @@ func (s *HttpServer) Start() {
 	}()
 
 	s.log.Info("HTTP server listener started.", zap.String("address", serverAddr))
-	// s.gracefulShutdown()
 }
 
 func (s *HttpServer) SetupRoute(routeGroup *RouteGroup) {

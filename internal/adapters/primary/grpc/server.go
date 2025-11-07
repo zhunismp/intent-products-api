@@ -74,7 +74,6 @@ func (s *GrpcServer) Start() {
 	}()
 
 	s.log.Info("GRPC server listener started.", zap.String("address", serverAddr))
-	// s.gracefulShutdown()
 }
 
 func (s *GrpcServer) RegisterServices(productGrpcHandler *product.ProductGrpcHandler) {
