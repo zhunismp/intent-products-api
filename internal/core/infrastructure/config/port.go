@@ -1,11 +1,15 @@
 package config
 
 type ServerConfigProvider interface {
+	// http config
 	GetServerEnv() string
 	GetServerName() string
 	GetServerHost() string
 	GetServerPort() string
 	GetServerBaseApiPrefix() string
+
+	// grpc config
+	GetGrpcServerPort() string
 }
 
 type DatabaseConfigProvider interface {

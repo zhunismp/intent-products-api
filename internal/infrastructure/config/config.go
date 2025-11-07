@@ -5,6 +5,7 @@ type ServerConfig struct {
 	Name          string
 	Host          string
 	Port          string
+	GrpcPort      string
 	BaseApiPrefix string
 }
 
