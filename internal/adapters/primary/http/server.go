@@ -3,10 +3,7 @@ package http
 import (
 	"context"
 	"fmt"
-	"os"
-	"os/signal"
 	"strings"
-	"syscall"
 	"time"
 
 	fiber "github.com/gofiber/fiber/v3"
@@ -45,7 +42,7 @@ func NewHttpServer(cfg core.AppConfigProvider, zapLogger *zap.Logger, baseApiPre
 	app.Use(recover.New())
 	app.Use(logger.New(logger.Config{
 		Format:     "${time} ${status} - ${method} ${path}\n",
-		TimeFormat: "2006/01/02 15:04:05",
+		TimeFormat: "2003/03/28 15:04:05",
 		TimeZone:   "Asia/Bangkok",
 	}))
 	app.Use(cors.New(cors.Config{
@@ -90,7 +87,7 @@ func (s *HttpServer) Start() {
 	}()
 
 	s.log.Info("HTTP server listener started.", zap.String("address", serverAddr))
-	s.gracefulShutdown()
+	// s.gracefulShutdown()
 }
 
 func (s *HttpServer) SetupRoute(routeGroup *RouteGroup) {
@@ -116,12 +113,7 @@ func (s *HttpServer) SetupRoute(routeGroup *RouteGroup) {
 	})
 }
 
-func (s *HttpServer) gracefulShutdown() {
-	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
-
-	sig := <-quit
-	s.log.Info("Received shutdown signal", zap.String("signal", sig.String()))
+func (s *HttpServer) GracefulShutdown() {
 	s.log.Info("Gracefully shutting down HTTP server...")
 
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
@@ -130,7 +122,7 @@ func (s *HttpServer) gracefulShutdown() {
 	if err := s.fiberApp.ShutdownWithContext(shutdownCtx); err != nil {
 		s.log.Error("Error during server shutdown", zap.Error(err))
 	} else {
-		s.log.Info("HTTP server shut down gracefully.")
+		s.log.Info("HTTP server shutdown gracefully.")
 	}
 
 	s.log.Info("Cleanup finished. Exiting.")

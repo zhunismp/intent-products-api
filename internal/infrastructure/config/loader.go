@@ -34,6 +34,7 @@ func LoadConfig(envFilePath ...string) (*AppEnvConfig, error) {
 			Name:          getEnv("SERVER_NAME", "product-api-dev"),
 			Host:          getEnv("SERVER_HOST", "0.0.0.0"),
 			Port:          getEnv("SERVER_PORT", "8080"),
+			GrpcPort:      getEnv("GRPC_SERVER_PORT", "9000"),
 			BaseApiPrefix: getEnv("SERVER_BASEAPIPREFIX", "/api/v1"),
 		}
 
@@ -89,6 +90,10 @@ func (c *AppEnvConfig) GetServerPort() string {
 }
 func (c *AppEnvConfig) GetServerBaseApiPrefix() string {
 	return c.serverCfg.BaseApiPrefix
+}
+
+func (c *AppEnvConfig) GetGrpcServerPort() string {
+	return c.serverCfg.GrpcPort
 }
 
 func (c *AppEnvConfig) GetDBHost() string {

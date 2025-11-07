@@ -1,6 +1,13 @@
 package main
 
 import (
+	"fmt"
+	"os"
+	"os/signal"
+	"syscall"
+
+	. "github.com/zhunismp/intent-products-api/internal/adapters/primary/grpc"
+	. "github.com/zhunismp/intent-products-api/internal/adapters/primary/grpc/product"
 	. "github.com/zhunismp/intent-products-api/internal/adapters/primary/http"
 	. "github.com/zhunismp/intent-products-api/internal/adapters/primary/http/product"
 	. "github.com/zhunismp/intent-products-api/internal/adapters/secondary/infrastructure/database"
@@ -32,11 +39,27 @@ func main() {
 	productDbRepo := NewProductRepository(db)
 	causeDbRepo := NewCauseRepository(db)
 	productSvc := NewProductService(productDbRepo, causeDbRepo)
+
+	// HTTP
 	productHttp := NewProductHttpHandler(productSvc)
-
 	routeGroup := NewRouteGroup(productHttp)
-
 	httpServer := NewHttpServer(cfg, log, baseApiPrefix)
 	httpServer.SetupRoute(routeGroup)
 	httpServer.Start()
+
+	// GRPC
+	productGrpc := NewProductGrpcHandler(productSvc)
+	grpcServer := NewGrpcServer(cfg, log)
+	grpcServer.RegisterServices(productGrpc)
+	grpcServer.Start()
+
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	sig := <-quit
+
+	log.Info(fmt.Sprintf("Received shutdown signal %s", sig.String()))
+	httpServer.GracefulShutdown()
+	grpcServer.GracefulShutdown()
+	log.Info("Cleanup finished. Exiting...")
+
 }
