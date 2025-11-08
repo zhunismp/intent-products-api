@@ -1,4 +1,4 @@
-name: Manual Generate API Client
+name: Generate API client pipeline
 
 on:
   workflow_dispatch:
@@ -11,15 +11,36 @@ on:
           - go
 
 jobs:
-  generate:
+  generate-go-client:
+    name: Generate golang client
     runs-on: ubuntu-latest
     env:
-      SERVICE_NAME: product-client
+      SERVICE_NAME: productclient
 
     steps:
       - name: Checkout service repo
         uses: actions/checkout@v4
 
+      - name: Generate Go client
+        if: ${{ github.event.inputs.language == 'go' }}
+        run: |
+          echo "Generating Go client..."
+          mkdir -p gen/productclient
+          go run github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@latest \
+            --config ./docs/oapi-codegen.yaml ./docs/openapi.yaml
+      - name: 'Upload Artifact'
+        uses: actions/upload-artifact@v4
+        with:
+          name: productclient
+          path: gen/productclient
+          retention-days: 1
+
+  publish:
+    name: Publish generated clients
+    runs-on: ubuntu-latest
+    needs: generate-go-client
+
+    steps:
       - name: Checkout api-clients repo
         uses: actions/checkout@v4
         with:
@@ -27,21 +48,23 @@ jobs:
           token: ${{ secrets.API_CLIENT_PAT }}
           path: api-clients
 
-      - name: Generate Go client
-        if: ${{ github.event.inputs.language == 'go' }}
-        run: |
-          echo "Generating Go client..."
-          go install github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@latest
-          mkdir -p api-clients/go/$SERVICE_NAME
-          oapi-codegen --config ./api/oapi-codegen.yaml ./api/openapi.yaml > api-clients/go/$SERVICE_NAME/client.gen.go
-          cd api-clients/go/$SERVICE_NAME
-          go mod init github.com/zhunsimp/api-clients/go/$SERVICE_NAME || true
-          go mod tidy
+      - name: Download generated artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: productclient
+          path: ./productclient
 
-      - name: Commit and tag client
-        working-directory: api-clients
+      - name: Move artifact into repo
         run: |
-          git config user.name "github-actions"
-          git config user.email "github-actions@github.com"
-          git add .
-          git commit -m "update $SERVICE_NAME client from product-service"
+          mkdir -p api-clients/go/productclient
+          mv productclient/* api-clients/go/productclient
+
+      - name: Commit and push
+        run: |
+          cd api-clients
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git add -A
+          git commit -m "chore: regenerate product client" || echo "No changes"
+          git push origin master

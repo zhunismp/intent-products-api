@@ -1,0 +1,12 @@
+package: productclient
+
+generate:
+  client: true
+  models: true
+  embedded-spec: false
+
+output: gen/productclient/client.gen.go
+
+output-options:
+  skip-prune: false
+  client-type-name: ProductClient
