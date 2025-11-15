@@ -10,6 +10,8 @@ type ProductUsecase interface {
 	GetProduct(context.Context, GetProductCmd) (*Product, error)
 	DeleteProduct(context.Context, DeleteProductCmd) error
 	UpdateCauseStatus(context.Context, UpdateCauseStatusCmd) (*Cause, error)
+
+	BatchGetProduct(context.Context, BatchGetProductCmd) ([]Product, error)
 }
 
 type ProductRepository interface {
@@ -17,6 +19,8 @@ type ProductRepository interface {
 	QueryProduct(context.Context, QueryProductSpec) ([]Product, error)
 	GetProduct(context.Context, OwnerId, ProductId) (*Product, error)
 	DeleteProduct(context.Context, OwnerId, ProductId) error
+
+	BatchGetProduct(context.Context, OwnerId, []ProductId) ([]Product, error)
 }
 
 type CauseRepository interface {
