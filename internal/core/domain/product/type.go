@@ -38,9 +38,9 @@ type GetProductCmd struct {
 }
 
 type UpdateCauseStatusCmd struct {
-	OwnerID   string
-	ProductID string
-	CauseStatus    CauseStatus
+	OwnerID     string
+	ProductID   string
+	CauseStatus CauseStatus
 }
 
 type QueryProductCmd struct {
@@ -49,6 +49,11 @@ type QueryProductCmd struct {
 	End     *time.Time
 	Status  *string
 	Sort    *Sort
+}
+
+type BatchGetProductCmd struct {
+	OwnerID    string
+	ProductIDs []string
 }
 
 // repo query

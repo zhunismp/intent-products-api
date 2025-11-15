@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/zhunismp/intent-products-api/internal/core/domain/shared/apperrors"
 	"github.com/zhunismp/intent-products-api/internal/core/domain/shared/utils"
 )
 
@@ -95,6 +96,27 @@ func (s *productService) GetProduct(ctx context.Context, cmd GetProductCmd) (*Pr
 
 	product.Causes = causes
 	return product, nil
+}
+
+func (s *productService) BatchGetProduct(ctx context.Context, cmd BatchGetProductCmd) ([]Product, error) {
+	if len(cmd.ProductIDs) == 0 {
+		return []Product{}, nil
+	}
+
+	products, err := s.productRepo.BatchGetProduct(ctx, cmd.OwnerID, cmd.ProductIDs)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(products) != len(cmd.ProductIDs) {
+		return nil, apperrors.New(
+			apperrors.ErrCodeForbidden,
+			"some product might not belong to user",
+			err,
+		)
+	}
+
+	return products, nil
 }
 
 func (s *productService) UpdateCauseStatus(ctx context.Context, cmd UpdateCauseStatusCmd) (*Cause, error) {

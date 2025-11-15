@@ -90,6 +90,30 @@ func (r *productRepository) GetProduct(ctx context.Context, ownerID string, prod
 	return toDomainProduct(model), nil
 }
 
+func (r *productRepository) BatchGetProduct(ctx context.Context, ownerID string, productIDs []string) ([]domain.Product, error) {
+	var models []ProductModel
+
+	err := r.db.WithContext(ctx).
+		Where("owner_id = ? AND id IN ?", ownerID, productIDs).
+		Find(&models).Error
+
+	if err != nil {
+		return nil, apperrors.New(
+			apperrors.ErrCodeInternal,
+			"failed to batch get products",
+			err,
+		)
+	}
+
+	// Convert models to domain products
+	products := make([]domain.Product, 0, len(models))
+	for _, model := range models {
+		products = append(products, *toDomainProduct(model))
+	}
+
+	return products, nil
+}
+
 func (r *productRepository) DeleteProduct(ctx context.Context, ownerID string, productID string) error {
 	result := r.db.WithContext(ctx).
 		Where("id = ? AND owner_id = ?", productID, ownerID).

@@ -1,6 +1,10 @@
 package apperrors
 
-import "net/http"
+import (
+	"net/http"
+
+	"google.golang.org/grpc/codes"
+)
 
 const (
 	ErrCodeNotFound     = "NOT_FOUND"
@@ -24,5 +28,20 @@ func MapToHttpCode(code string) int {
 		return http.StatusInternalServerError
 	default:
 		return http.StatusInternalServerError
+	}
+}
+
+func MapToGrpcStatus(code string) codes.Code {
+	switch code {
+	case ErrCodeNotFound:
+		return codes.NotFound
+	case ErrCodeValidation:
+		return codes.InvalidArgument
+	case ErrCodeUnauthorized:
+		return codes.Unauthenticated
+	case ErrCodeForbidden:
+		return codes.PermissionDenied
+	default:
+		return codes.Internal
 	}
 }
