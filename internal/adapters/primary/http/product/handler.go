@@ -5,11 +5,14 @@ import (
 
 	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v3"
+	dto "github.com/zhunismp/intent-products-api/internal/adapters/primary/http/shared/dto"
 	core "github.com/zhunismp/intent-products-api/internal/core/domain/product"
 	"github.com/zhunismp/intent-products-api/internal/core/domain/shared/apperrors"
 )
 
 // for development purpose.
+// user id will extract directly from Access token.
+// Hence, normal request body or param will not contain user id
 const OwnerID = "101234567890123456789"
 
 type ProductHttpHandler struct {
@@ -30,20 +33,20 @@ func (h *ProductHttpHandler) CreateProduct(c fiber.Ctx) error {
 
 	// parse request body
 	if err := c.Bind().Body(&req); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(ErrorResponse{ErrorMessage: "can not parse request body"})
+		return c.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{ErrorMessage: "can not parse request body"})
 	}
 
 	// validate req
 	if err := h.reqValidator.Struct(req); err != nil {
 		if errs, ok := err.(validator.ValidationErrors); ok {
 			errMap := GenerateErrorMap(errs)
-			return c.Status(fiber.StatusBadRequest).JSON(ValidationErrorResponse{
+			return c.Status(fiber.StatusBadRequest).JSON(dto.ValidationErrorResponse{
 				ErrorMessage: "invalid request",
 				ErrorFields:  errMap,
 			})
 		}
 
-		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{ErrorMessage: "something went wrong"})
+		return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{ErrorMessage: "something went wrong"})
 	}
 
 	// transform cmd
@@ -58,15 +61,10 @@ func (h *ProductHttpHandler) CreateProduct(c fiber.Ctx) error {
 	// calling svc
 	product, err := h.productSvc.CreateProduct(c.Context(), cmd)
 	if err != nil {
-		var appErr *apperrors.AppError
-		if errors.As(err, &appErr) {
-			return c.Status(apperrors.MapToHttpCode(appErr.Code)).JSON(ErrorResponse{ErrorMessage: appErr.Message})
-		}
-
-		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{ErrorMessage: "something went wrong"})
+		return handleError(c, err)
 	}
 
-	return c.Status(fiber.StatusOK).JSON(SuccessResponse{
+	return c.Status(fiber.StatusOK).JSON(dto.SuccessResponse{
 		Message: "product succesfully created",
 		Data:    product,
 	})
@@ -84,15 +82,10 @@ func (h *ProductHttpHandler) GetProduct(c fiber.Ctx) error {
 	// calling svc
 	product, err := h.productSvc.GetProduct(c.Context(), cmd)
 	if err != nil {
-		var appErr *apperrors.AppError
-		if errors.As(err, &appErr) {
-			return c.Status(apperrors.MapToHttpCode(appErr.Code)).JSON(ErrorResponse{ErrorMessage: appErr.Message})
-		}
-
-		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{ErrorMessage: "something went wrong"})
+		return handleError(c, err)
 	}
 
-	return c.Status(fiber.StatusOK).JSON(SuccessResponse{
+	return c.Status(fiber.StatusOK).JSON(dto.SuccessResponse{
 		Message: "get product successfully",
 		Data:    product,
 	})
@@ -103,20 +96,20 @@ func (h *ProductHttpHandler) UpdateCauseStatus(c fiber.Ctx) error {
 
 	// parse request body
 	if err := c.Bind().Body(&req); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(ErrorResponse{ErrorMessage: "can not parse request body"})
+		return c.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{ErrorMessage: "can not parse request body"})
 	}
 
 	// validate req
 	if err := h.reqValidator.Struct(req); err != nil {
 		if errs, ok := err.(validator.ValidationErrors); ok {
 			errMap := GenerateErrorMap(errs)
-			return c.Status(fiber.StatusBadRequest).JSON(ValidationErrorResponse{
+			return c.Status(fiber.StatusBadRequest).JSON(dto.ValidationErrorResponse{
 				ErrorMessage: "invalid request",
 				ErrorFields:  errMap,
 			})
 		}
 
-		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{ErrorMessage: "something went wrong"})
+		return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{ErrorMessage: "something went wrong"})
 	}
 
 	// transform cmd
@@ -134,15 +127,10 @@ func (h *ProductHttpHandler) UpdateCauseStatus(c fiber.Ctx) error {
 	// calling svc
 	product, err := h.productSvc.UpdateCauseStatus(c, cmd)
 	if err != nil {
-		var appErr *apperrors.AppError
-		if errors.As(err, &appErr) {
-			return c.Status(apperrors.MapToHttpCode(appErr.Code)).JSON(ErrorResponse{ErrorMessage: appErr.Message})
-		}
-
-		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{ErrorMessage: "something went wrong"})
+		return handleError(c, err)
 	}
 
-	return c.Status(fiber.StatusOK).JSON(SuccessResponse{
+	return c.Status(fiber.StatusOK).JSON(dto.SuccessResponse{
 		Message: "cause status updated successfully",
 		Data:    product,
 	})
@@ -153,20 +141,20 @@ func (h *ProductHttpHandler) QueryProduct(c fiber.Ctx) error {
 
 	// Parse request body
 	if err := c.Bind().Body(&req); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(ErrorResponse{ErrorMessage: "can not parse request body"})
+		return c.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{ErrorMessage: "can not parse request body"})
 	}
 
 	// validate req
 	if err := h.reqValidator.Struct(req); err != nil {
 		if errs, ok := err.(validator.ValidationErrors); ok {
 			errMap := GenerateErrorMap(errs)
-			return c.Status(fiber.StatusBadRequest).JSON(ValidationErrorResponse{
+			return c.Status(fiber.StatusBadRequest).JSON(dto.ValidationErrorResponse{
 				ErrorMessage: "invalid request",
 				ErrorFields:  errMap,
 			})
 		}
 
-		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{ErrorMessage: "something went wrong"})
+		return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{ErrorMessage: "something went wrong"})
 	}
 
 	// transform cmd
@@ -189,16 +177,11 @@ func (h *ProductHttpHandler) QueryProduct(c fiber.Ctx) error {
 	// calling svc
 	products, err := h.productSvc.QueryProducts(c.Context(), cmd)
 	if err != nil {
-		var appErr *apperrors.AppError
-		if errors.As(err, &appErr) {
-			return c.Status(apperrors.MapToHttpCode(appErr.Code)).JSON(ErrorResponse{ErrorMessage: appErr.Message})
-		}
-
-		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{ErrorMessage: "something went wrong"})
+		return handleError(c, err)
 	}
 
 	return c.Status(fiber.StatusOK).JSON(
-		SuccessResponse{
+		dto.SuccessResponse{
 			Message: "query product success",
 			Data:    products,
 		},
@@ -216,18 +199,22 @@ func (h *ProductHttpHandler) DeleteProduct(c fiber.Ctx) error {
 
 	// calling svc
 	if err := h.productSvc.DeleteProduct(c.Context(), cmd); err != nil {
-		var appErr *apperrors.AppError
-		if errors.As(err, &appErr) {
-			return c.Status(apperrors.MapToHttpCode(appErr.Code)).JSON(ErrorResponse{ErrorMessage: appErr.Message})
-		}
-
-		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{ErrorMessage: "something went wrong"})
+		return handleError(c, err)
 	}
 
 	return c.Status(fiber.StatusOK).JSON(
-		SuccessResponse{
+		dto.SuccessResponse{
 			Message: "product was deleted",
 			Data:    id,
 		},
 	)
+}
+
+func handleError(c fiber.Ctx, err error) error {
+	var appErr *apperrors.AppError
+	if errors.As(err, &appErr) {
+		return c.Status(apperrors.MapToHttpCode(appErr.Code)).JSON(dto.ErrorResponse{ErrorMessage: appErr.Message})
+	}
+
+	return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{ErrorMessage: "something went wrong"})
 }
