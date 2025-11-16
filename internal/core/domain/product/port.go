@@ -7,6 +7,7 @@ import (
 type ProductUsecase interface {
 	CreateProduct(context.Context, CreateProductCmd) (*Product, error)
 	GetProduct(context.Context, GetProductCmd) (*Product, error)
+	GetProductByStatus(context.Context, GetProductByStatusCmd) ([]Product, error)
 	DeleteProduct(context.Context, DeleteProductCmd) error
 	UpdateCauseStatus(context.Context, UpdateCauseStatusCmd) (*Cause, error)
 }
@@ -14,6 +15,7 @@ type ProductUsecase interface {
 type ProductRepository interface {
 	CreateProduct(context.Context, Product) (*Product, error)
 	GetProduct(context.Context, OwnerId, ProductId) (*Product, error)
+	GetProductByStatus(context.Context, OwnerId, Status) ([]Product, error)
 	DeleteProduct(context.Context, OwnerId, ProductId) error
 }
 

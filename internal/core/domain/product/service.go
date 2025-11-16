@@ -73,6 +73,10 @@ func (s *productService) GetProduct(ctx context.Context, cmd GetProductCmd) (*Pr
 	return product, nil
 }
 
+func (s *productService) GetProductByStatus(ctx context.Context, cmd GetProductByStatusCmd) ([]Product, error) {
+	return s.productRepo.GetProductByStatus(ctx, cmd.OwnerID, cmd.Status)
+}
+
 func (s *productService) UpdateCauseStatus(ctx context.Context, cmd UpdateCauseStatusCmd) (*Cause, error) {
 	product, err := s.productRepo.GetProduct(ctx, cmd.OwnerID, cmd.ProductID)
 	if err != nil {

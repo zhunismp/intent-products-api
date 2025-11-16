@@ -56,6 +56,37 @@ func (r *productRepository) GetProduct(ctx context.Context, ownerID string, prod
 	return toDomainProduct(model), nil
 }
 
+func (r *productRepository) GetProductByStatus(ctx context.Context, ownerID string, status string) ([]domain.Product, error) {
+	var models []ProductModel
+
+	err := r.db.WithContext(ctx).
+		Where("owner_id = ? AND status = ?", ownerID, status).
+		Find(&models).Error
+
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, apperrors.New(
+			apperrors.ErrCodeNotFound,
+			fmt.Sprintf("no products found for owner %s with status %s", ownerID, status),
+			err,
+		)
+	}
+
+	if err != nil {
+		return nil, apperrors.New(
+			apperrors.ErrCodeInternal,
+			"failed to get products by status",
+			err,
+		)
+	}
+
+	products := make([]domain.Product, 0, len(models))
+	for _, m := range models {
+		products = append(products, *toDomainProduct(m))
+	}
+
+	return products, nil
+}
+
 func (r *productRepository) DeleteProduct(ctx context.Context, ownerID string, productID string) error {
 	result := r.db.WithContext(ctx).
 		Where("id = ? AND owner_id = ?", productID, ownerID).

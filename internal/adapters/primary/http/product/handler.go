@@ -88,6 +88,24 @@ func (h *ProductHttpHandler) GetProduct(c fiber.Ctx) error {
 	return handleResponse(c, fiber.StatusOK, "get product successfully", product)
 }
 
+func (h *ProductHttpHandler) GetProductByStatus(c fiber.Ctx) error {
+	status := c.Params("status")
+
+	// transform cmd
+	cmd := core.GetProductByStatusCmd{
+		OwnerID: OwnerID,
+		Status:  status,
+	}
+
+	// calling svc
+	products, err := h.productSvc.GetProductByStatus(c.Context(), cmd)
+	if err != nil {
+		return handleError(c, err)
+	}
+
+	return handleResponse(c, fiber.StatusOK, "get product successfully", products)
+}
+
 func (h *ProductHttpHandler) UpdateCauseStatus(c fiber.Ctx) error {
 	req := new(UpdateCauseStatusRequest)
 

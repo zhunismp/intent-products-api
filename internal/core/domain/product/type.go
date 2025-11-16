@@ -4,6 +4,7 @@ package product
 type OwnerId = string
 type ProductId = string
 type CauseId = string
+type Status = string
 
 // common type
 type Sort struct {
@@ -33,6 +34,11 @@ type DeleteProductCmd struct {
 type GetProductCmd struct {
 	OwnerID   string
 	ProductID string
+}
+
+type GetProductByStatusCmd struct {
+	OwnerID string
+	Status  string
 }
 
 type UpdateCauseStatusCmd struct {
