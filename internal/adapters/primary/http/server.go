@@ -103,7 +103,6 @@ func (s *HttpServer) SetupRoute(routeGroup *RouteGroup) {
 	s.registerAPIGroup("/products", func(router fiber.Router) {
 		// core product
 		router.Get("/:id", productHandler.GetProduct)
-		router.Post("/query", productHandler.QueryProduct)
 		router.Post("/", productHandler.CreateProduct)
 		router.Delete("/:id", productHandler.DeleteProduct)
 

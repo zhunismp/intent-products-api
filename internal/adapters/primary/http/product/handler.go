@@ -85,10 +85,7 @@ func (h *ProductHttpHandler) GetProduct(c fiber.Ctx) error {
 		return handleError(c, err)
 	}
 
-	return c.Status(fiber.StatusOK).JSON(dto.SuccessResponse{
-		Message: "get product successfully",
-		Data:    product,
-	})
+	return handleResponse(c, fiber.StatusOK, "get product successfully", product)
 }
 
 func (h *ProductHttpHandler) UpdateCauseStatus(c fiber.Ctx) error {
@@ -136,58 +133,6 @@ func (h *ProductHttpHandler) UpdateCauseStatus(c fiber.Ctx) error {
 	})
 }
 
-func (h *ProductHttpHandler) QueryProduct(c fiber.Ctx) error {
-	req := new(QueryProductRequest)
-
-	// Parse request body
-	if err := c.Bind().Body(&req); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{ErrorMessage: "can not parse request body"})
-	}
-
-	// validate req
-	if err := h.reqValidator.Struct(req); err != nil {
-		if errs, ok := err.(validator.ValidationErrors); ok {
-			errMap := GenerateErrorMap(errs)
-			return c.Status(fiber.StatusBadRequest).JSON(dto.ValidationErrorResponse{
-				ErrorMessage: "invalid request",
-				ErrorFields:  errMap,
-			})
-		}
-
-		return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{ErrorMessage: "something went wrong"})
-	}
-
-	// transform cmd
-	var sort *core.Sort
-	if req.Sort != nil {
-		sort = &core.Sort{
-			Field:     req.Sort.Field,
-			Direction: req.Sort.Direction,
-		}
-	}
-
-	cmd := core.QueryProductCmd{
-		OwnerID: OwnerID,
-		Start:   req.Start,
-		End:     req.End,
-		Status:  req.Status,
-		Sort:    sort,
-	}
-
-	// calling svc
-	products, err := h.productSvc.QueryProducts(c.Context(), cmd)
-	if err != nil {
-		return handleError(c, err)
-	}
-
-	return c.Status(fiber.StatusOK).JSON(
-		dto.SuccessResponse{
-			Message: "query product success",
-			Data:    products,
-		},
-	)
-}
-
 func (h *ProductHttpHandler) DeleteProduct(c fiber.Ctx) error {
 	id := c.Params("id")
 
@@ -202,12 +147,7 @@ func (h *ProductHttpHandler) DeleteProduct(c fiber.Ctx) error {
 		return handleError(c, err)
 	}
 
-	return c.Status(fiber.StatusOK).JSON(
-		dto.SuccessResponse{
-			Message: "product was deleted",
-			Data:    id,
-		},
-	)
+	return handleResponse(c, fiber.StatusOK, "product was deleted", id)
 }
 
 func handleError(c fiber.Ctx, err error) error {
@@ -217,4 +157,13 @@ func handleError(c fiber.Ctx, err error) error {
 	}
 
 	return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{ErrorMessage: "something went wrong"})
+}
+
+func handleResponse(c fiber.Ctx, status int, message string, data any) error {
+	return c.Status(status).JSON(
+		dto.SuccessResponse{
+			Message: message,
+			Data:    data,
+		},
+	)
 }

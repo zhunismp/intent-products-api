@@ -4,7 +4,6 @@ import (
 	"context"
 	"time"
 
-	"github.com/zhunismp/intent-products-api/internal/core/domain/shared/apperrors"
 	"github.com/zhunismp/intent-products-api/internal/core/domain/shared/utils"
 )
 
@@ -59,30 +58,6 @@ func (s *productService) CreateProduct(ctx context.Context, cmd CreateProductCmd
 	return createdProduct, nil
 }
 
-func (s *productService) QueryProducts(ctx context.Context, cmd QueryProductCmd) ([]Product, error) {
-	// default sorting field
-	sort := Sort{
-		Field:     "created_at",
-		Direction: "asc",
-	}
-
-	// apply sorting, if applicable.
-	if cmd.Sort != nil {
-		sort.Field = cmd.Sort.Field
-		sort.Direction = cmd.Sort.Direction
-	}
-
-	spec := QueryProductSpec{
-		OwnerID: cmd.OwnerID,
-		Start:   cmd.Start,
-		End:     cmd.End,
-		Status:  cmd.Status,
-		Sort:    sort,
-	}
-
-	return s.productRepo.QueryProduct(ctx, spec)
-}
-
 func (s *productService) GetProduct(ctx context.Context, cmd GetProductCmd) (*Product, error) {
 	product, err := s.productRepo.GetProduct(ctx, cmd.OwnerID, cmd.ProductID)
 	if err != nil {
@@ -96,27 +71,6 @@ func (s *productService) GetProduct(ctx context.Context, cmd GetProductCmd) (*Pr
 
 	product.Causes = causes
 	return product, nil
-}
-
-func (s *productService) BatchGetProduct(ctx context.Context, cmd BatchGetProductCmd) ([]Product, error) {
-	if len(cmd.ProductIDs) == 0 {
-		return []Product{}, nil
-	}
-
-	products, err := s.productRepo.BatchGetProduct(ctx, cmd.OwnerID, cmd.ProductIDs)
-	if err != nil {
-		return nil, err
-	}
-
-	if len(products) != len(cmd.ProductIDs) {
-		return nil, apperrors.New(
-			apperrors.ErrCodeForbidden,
-			"some product might not belong to user",
-			err,
-		)
-	}
-
-	return products, nil
 }
 
 func (s *productService) UpdateCauseStatus(ctx context.Context, cmd UpdateCauseStatusCmd) (*Cause, error) {

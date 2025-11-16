@@ -1,7 +1,5 @@
 package product
 
-import "time"
-
 // alias type
 type OwnerId = string
 type ProductId = string
@@ -41,26 +39,4 @@ type UpdateCauseStatusCmd struct {
 	OwnerID     string
 	ProductID   string
 	CauseStatus CauseStatus
-}
-
-type QueryProductCmd struct {
-	OwnerID string
-	Start   *time.Time
-	End     *time.Time
-	Status  *string
-	Sort    *Sort
-}
-
-type BatchGetProductCmd struct {
-	OwnerID    string
-	ProductIDs []string
-}
-
-// repo query
-type QueryProductSpec struct {
-	OwnerID string
-	Start   *time.Time
-	End     *time.Time
-	Status  *string
-	Sort    Sort
 }

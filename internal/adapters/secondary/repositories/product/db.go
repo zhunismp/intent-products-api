@@ -5,11 +5,9 @@ import (
 	"errors"
 	"fmt"
 
-	"gorm.io/gorm"
-	"gorm.io/gorm/clause"
-
 	domain "github.com/zhunismp/intent-products-api/internal/core/domain/product"
 	"github.com/zhunismp/intent-products-api/internal/core/domain/shared/apperrors"
+	"gorm.io/gorm"
 )
 
 type productRepository struct {
@@ -37,38 +35,6 @@ func (r *productRepository) CreateProduct(ctx context.Context, product domain.Pr
 	return toDomainProduct(model), nil
 }
 
-// TODO: clean up logic here
-func (r *productRepository) QueryProduct(ctx context.Context, spec domain.QueryProductSpec) ([]domain.Product, error) {
-	var models []ProductModel
-	tx := r.db.WithContext(ctx).Where("owner_id = ?", spec.OwnerID)
-
-	if spec.Status != nil {
-		tx = tx.Where("status = ?", *spec.Status)
-	}
-
-	switch {
-	case spec.Start != nil && spec.End != nil:
-		tx = tx.Where("created_at BETWEEN ? AND ?", spec.Start, spec.End)
-	case spec.Start != nil:
-		tx = tx.Where("created_at >= ?", spec.Start)
-	case spec.End != nil:
-		tx = tx.Where("created_at <= ?", spec.End)
-	}
-
-	tx = tx.Order(clause.OrderByColumn{Column: clause.Column{Name: spec.Sort.Field}, Desc: spec.Sort.Direction == "desc"})
-
-	if err := tx.Find(&models).Error; err != nil {
-		return nil, apperrors.New(apperrors.ErrCodeInternal, "failed to query products", err)
-	}
-
-	// Convert to domain entities
-	products := make([]domain.Product, 0, len(models))
-	for _, m := range models {
-		products = append(products, *toDomainProduct(m))
-	}
-	return products, nil
-}
-
 func (r *productRepository) GetProduct(ctx context.Context, ownerID string, productID string) (*domain.Product, error) {
 	var model ProductModel
 	err := r.db.WithContext(ctx).
@@ -88,30 +54,6 @@ func (r *productRepository) GetProduct(ctx context.Context, ownerID string, prod
 	}
 
 	return toDomainProduct(model), nil
-}
-
-func (r *productRepository) BatchGetProduct(ctx context.Context, ownerID string, productIDs []string) ([]domain.Product, error) {
-	var models []ProductModel
-
-	err := r.db.WithContext(ctx).
-		Where("owner_id = ? AND id IN ?", ownerID, productIDs).
-		Find(&models).Error
-
-	if err != nil {
-		return nil, apperrors.New(
-			apperrors.ErrCodeInternal,
-			"failed to batch get products",
-			err,
-		)
-	}
-
-	// Convert models to domain products
-	products := make([]domain.Product, 0, len(models))
-	for _, model := range models {
-		products = append(products, *toDomainProduct(model))
-	}
-
-	return products, nil
 }
 
 func (r *productRepository) DeleteProduct(ctx context.Context, ownerID string, productID string) error {
