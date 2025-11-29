@@ -3,14 +3,17 @@ package cause
 import (
 	"context"
 	"fmt"
+
+	"go.uber.org/zap"
 )
 
 type causeService struct {
 	causeRepo CauseRepository
+	logger *zap.Logger
 }
 
-func NewCauseService(causeRepo CauseRepository) CauseUsecase {
-	return &causeService{causeRepo: causeRepo}
+func NewCauseService(causeRepo CauseRepository, logger *zap.Logger) CauseUsecase {
+	return &causeService{causeRepo: causeRepo, logger: logger}
 }
 
 func (s *causeService) BulkCreateCauses(ctx context.Context, productID uint, reasons []string) error {

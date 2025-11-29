@@ -6,19 +6,27 @@ import (
 	"github.com/zhunismp/intent-products-api/internal/core/domain/cause"
 	"github.com/zhunismp/intent-products-api/internal/core/domain/priority"
 	"github.com/zhunismp/intent-products-api/internal/core/domain/shared/apperrors"
+	"go.uber.org/zap"
 )
 
 type productService struct {
 	productRepo ProductRepository
 	causeSvc    cause.CauseUsecase
 	prioritySvc priority.PriorityUsecase
+	logger      *zap.Logger
 }
 
-func NewProductService(productRepo ProductRepository, causeSvc cause.CauseUsecase, prioritySvc priority.PriorityUsecase) ProductUsecase {
+func NewProductService(
+	productRepo ProductRepository,
+	causeSvc cause.CauseUsecase,
+	prioritySvc priority.PriorityUsecase,
+	logger *zap.Logger,
+) ProductUsecase {
 	return &productService{
 		productRepo: productRepo,
 		causeSvc:    causeSvc,
 		prioritySvc: prioritySvc,
+		logger:      logger,
 	}
 }
 

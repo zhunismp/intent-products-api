@@ -4,13 +4,15 @@ import (
 	"context"
 
 	"github.com/zhunismp/intent-products-api/internal/core/domain/shared/apperrors"
+	"go.uber.org/zap"
 )
 
 type priorityService struct {
+	logger *zap.Logger
 }
 
-func NewPriorityService() PriorityUsecase {
-	return &priorityService{}
+func NewPriorityService(logger *zap.Logger) PriorityUsecase {
+	return &priorityService{logger: logger}
 }
 
 func (s *priorityService) CalculateNewPriority(ctx context.Context, priorityBefore *int64, priorityAfter *int64) (int64, error) {

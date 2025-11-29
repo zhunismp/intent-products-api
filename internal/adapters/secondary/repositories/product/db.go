@@ -7,15 +7,17 @@ import (
 
 	domain "github.com/zhunismp/intent-products-api/internal/core/domain/product"
 	"github.com/zhunismp/intent-products-api/internal/core/domain/shared/apperrors"
+	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
 
 type productRepository struct {
-	db *gorm.DB
+	db     *gorm.DB
+	logger *zap.Logger
 }
 
-func NewProductRepository(db *gorm.DB) domain.ProductRepository {
-	return &productRepository{db: db}
+func NewProductRepository(db *gorm.DB, logger *zap.Logger) domain.ProductRepository {
+	return &productRepository{db: db, logger: logger}
 }
 
 func (r *productRepository) CreateProduct(ctx context.Context, product *domain.Product) (uint, error) {
