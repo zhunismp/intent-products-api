@@ -1,26 +1,8 @@
 package product
 
-import "time"
-
-// alias type
-type OwnerId = string
-type ProductId = string
-type CauseId = string
-
-// common type
-type Sort struct {
-	Field     string
-	Direction string
-}
-
-type CauseStatus struct {
-	CauseID string
-	Status  bool
-}
-
 // usecase command
 type CreateProductCmd struct {
-	OwnerID string
+	OwnerID uint
 	Title   string
 	Price   float64
 	Link    *string
@@ -28,39 +10,23 @@ type CreateProductCmd struct {
 }
 
 type DeleteProductCmd struct {
-	OwnerID   string
-	ProductID string
+	OwnerID   uint
+	ProductID uint
 }
 
 type GetProductCmd struct {
-	OwnerID   string
-	ProductID string
+	OwnerID   uint
+	ProductID uint
 }
 
-type UpdateCauseStatusCmd struct {
-	OwnerID     string
-	ProductID   string
-	CauseStatus CauseStatus
+type GetProductByStatusCmd struct {
+	OwnerID uint
+	Status  string
 }
 
-type QueryProductCmd struct {
-	OwnerID string
-	Start   *time.Time
-	End     *time.Time
-	Status  *string
-	Sort    *Sort
-}
-
-type BatchGetProductCmd struct {
-	OwnerID    string
-	ProductIDs []string
-}
-
-// repo query
-type QueryProductSpec struct {
-	OwnerID string
-	Start   *time.Time
-	End     *time.Time
-	Status  *string
-	Sort    Sort
+type UpdatePriorityCmd struct {
+	OwnerID         uint
+	ProductID       uint
+	ProductIDBefore *uint
+	ProductIDAfter  *uint
 }

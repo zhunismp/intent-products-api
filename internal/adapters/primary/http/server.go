@@ -25,7 +25,7 @@ type HttpServer struct {
 }
 
 type RouteGroup struct {
-	product *product.ProductHttpHandler
+	product  *product.ProductHttpHandler
 }
 
 func NewRouteGroup(product *product.ProductHttpHandler) *RouteGroup {
@@ -103,12 +103,10 @@ func (s *HttpServer) SetupRoute(routeGroup *RouteGroup) {
 	s.registerAPIGroup("/products", func(router fiber.Router) {
 		// core product
 		router.Get("/:id", productHandler.GetProduct)
-		router.Post("/query", productHandler.QueryProduct)
+		router.Get("/status/:status", productHandler.GetProductByStatus)
 		router.Post("/", productHandler.CreateProduct)
+		router.Put("/priority", productHandler.UpdatePriority)
 		router.Delete("/:id", productHandler.DeleteProduct)
-
-		// cause
-		router.Put("/cause-status", productHandler.UpdateCauseStatus)
 	})
 }
 
@@ -143,23 +141,6 @@ func (s *HttpServer) registerAPIGroup(subPrefix string, groupRegistrar func(rout
 	group := s.apiBaseRouter.Group(subPrefix)
 	groupRegistrar(group)
 	s.log.Info("Registered API group", zap.String("fullPrefix", fullPrefix))
-}
-
-func (s *HttpServer) addHttpRoute(method, relativePath string, handler fiber.Handler) fiber.Router {
-	if !strings.HasPrefix(relativePath, "/") && relativePath != "" {
-		relativePath = "/" + relativePath
-	}
-	fullPath := s.basePath + relativePath
-	if s.basePath == "/" && relativePath == "" {
-		fullPath = "/"
-	} else if s.basePath == "/" && strings.HasPrefix(relativePath, "/") {
-		fullPath = relativePath
-	} else if s.basePath != "" && relativePath == "" {
-		fullPath = s.basePath
-	}
-
-	s.log.Info("Adding HTTP route", zap.String("method", method), zap.String("fullPath", fullPath))
-	return s.apiBaseRouter.Add([]string{method}, relativePath, handler)
 }
 
 func validateArguments(cfg core.AppConfigProvider, zapLogger *zap.Logger, baseApiPrefix *string) {

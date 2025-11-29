@@ -6,13 +6,13 @@ import (
 	"os/signal"
 	"syscall"
 
-	. "github.com/zhunismp/intent-products-api/internal/adapters/primary/grpc"
-	. "github.com/zhunismp/intent-products-api/internal/adapters/primary/grpc/product"
 	. "github.com/zhunismp/intent-products-api/internal/adapters/primary/http"
 	. "github.com/zhunismp/intent-products-api/internal/adapters/primary/http/product"
 	. "github.com/zhunismp/intent-products-api/internal/adapters/secondary/infrastructure/database"
 	. "github.com/zhunismp/intent-products-api/internal/adapters/secondary/repositories/cause"
 	. "github.com/zhunismp/intent-products-api/internal/adapters/secondary/repositories/product"
+	. "github.com/zhunismp/intent-products-api/internal/core/domain/cause"
+	. "github.com/zhunismp/intent-products-api/internal/core/domain/priority"
 	. "github.com/zhunismp/intent-products-api/internal/core/domain/product"
 	. "github.com/zhunismp/intent-products-api/internal/infrastructure/config"
 	. "github.com/zhunismp/intent-products-api/internal/infrastructure/logger"
@@ -38,7 +38,10 @@ func main() {
 
 	productDbRepo := NewProductRepository(db)
 	causeDbRepo := NewCauseRepository(db)
-	productSvc := NewProductService(productDbRepo, causeDbRepo)
+
+	causeSvc := NewCauseService(causeDbRepo)
+	prioritySvc := NewPriorityService()
+	productSvc := NewProductService(productDbRepo, causeSvc, prioritySvc)
 
 	// HTTP
 	productHttp := NewProductHttpHandler(productSvc)
@@ -47,19 +50,13 @@ func main() {
 	httpServer.SetupRoute(routeGroup)
 	httpServer.Start()
 
-	// GRPC
-	productGrpc := NewProductGrpcHandler(productSvc)
-	grpcServer := NewGrpcServer(cfg, log)
-	grpcServer.RegisterServices(productGrpc)
-	grpcServer.Start()
-
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+
 	sig := <-quit
 
 	log.Info(fmt.Sprintf("Received shutdown signal %s", sig.String()))
 	httpServer.GracefulShutdown()
-	grpcServer.GracefulShutdown()
 	log.Info("Cleanup finished. Exiting...")
 
 }
