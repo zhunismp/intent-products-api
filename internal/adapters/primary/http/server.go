@@ -25,7 +25,7 @@ type HttpServer struct {
 }
 
 type RouteGroup struct {
-	product *product.ProductHttpHandler
+	product  *product.ProductHttpHandler
 }
 
 func NewRouteGroup(product *product.ProductHttpHandler) *RouteGroup {
@@ -105,10 +105,8 @@ func (s *HttpServer) SetupRoute(routeGroup *RouteGroup) {
 		router.Get("/:id", productHandler.GetProduct)
 		router.Get("/status/:status", productHandler.GetProductByStatus)
 		router.Post("/", productHandler.CreateProduct)
+		router.Put("/priority", productHandler.UpdatePriority)
 		router.Delete("/:id", productHandler.DeleteProduct)
-
-		// cause
-		router.Put("/cause-status", productHandler.UpdateCauseStatus)
 	})
 }
 

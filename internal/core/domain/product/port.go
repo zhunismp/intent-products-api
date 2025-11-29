@@ -5,23 +5,18 @@ import (
 )
 
 type ProductUsecase interface {
-	CreateProduct(context.Context, CreateProductCmd) (*Product, error)
-	GetProduct(context.Context, GetProductCmd) (*Product, error)
-	GetProductByStatus(context.Context, GetProductByStatusCmd) ([]Product, error)
-	DeleteProduct(context.Context, DeleteProductCmd) error
-	UpdateCauseStatus(context.Context, UpdateCauseStatusCmd) (*Cause, error)
+	CreateProduct(ctx context.Context, cmd CreateProductCmd) error
+	GetProduct(ctx context.Context, cmd GetProductCmd) (*Product, error)
+	GetProductByStatus(ctx context.Context, cmd GetProductByStatusCmd) ([]*Product, error)
+	UpdatePriority(ctx context.Context, cmd UpdatePriorityCmd) error
+	DeleteProduct(ctx context.Context, cmd DeleteProductCmd) error
 }
 
 type ProductRepository interface {
-	CreateProduct(context.Context, Product) (*Product, error)
-	GetProduct(context.Context, OwnerId, ProductId) (*Product, error)
-	GetProductByStatus(context.Context, OwnerId, Status) ([]Product, error)
-	DeleteProduct(context.Context, OwnerId, ProductId) error
-}
-
-type CauseRepository interface {
-	CreateCauses(context.Context, ProductId, []Cause) ([]Cause, error)
-	GetCauses(context.Context, ProductId) ([]Cause, error)
-	UpdateCauseStatus(context.Context, ProductId, CauseStatus) (*Cause, error)
-	DeleteCausesByProductID(context.Context, ProductId) error
+	CreateProduct(ctx context.Context, product *Product) (uint, error)
+	GetProduct(ctx context.Context, OwnerId, productID uint) (*Product, error)
+	GetProductByStatus(ctx context.Context, ownerID uint, status string) ([]*Product, error)
+	BulkGetProducts(ctx context.Context, ownerID uint, productIDs []uint) ([]*Product, error)
+	GetLastProductPriority(ctx context.Context, ownerID uint) (int64, error)
+	DeleteProduct(ctx context.Context, ownerID uint, productID uint) error
 }
