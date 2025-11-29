@@ -44,7 +44,7 @@ func main() {
 	productSvc := NewProductService(productDbRepo, causeSvc, prioritySvc, logger)
 
 	// HTTP
-	productHttp := NewProductHttpHandler(productSvc)
+	productHttp := NewProductHttpHandler(productSvc, logger)
 	routeGroup := NewRouteGroup(productHttp)
 	httpServer := NewHttpServer(cfg, logger, baseApiPrefix)
 	httpServer.SetupRoute(routeGroup)
