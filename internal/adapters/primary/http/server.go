@@ -3,6 +3,7 @@ package http
 import (
 	"context"
 	"fmt"
+	"io"
 	"strings"
 	"time"
 
@@ -11,6 +12,7 @@ import (
 	limiter "github.com/gofiber/fiber/v3/middleware/limiter"
 	logger "github.com/gofiber/fiber/v3/middleware/logger"
 	recover "github.com/gofiber/fiber/v3/middleware/recover"
+	"github.com/gofiber/fiber/v3/middleware/requestid"
 	"github.com/zhunismp/intent-products-api/internal/adapters/primary/http/product"
 	core "github.com/zhunismp/intent-products-api/internal/core/infrastructure/config"
 	"go.uber.org/zap"
@@ -25,7 +27,7 @@ type HttpServer struct {
 }
 
 type RouteGroup struct {
-	product  *product.ProductHttpHandler
+	product *product.ProductHttpHandler
 }
 
 func NewRouteGroup(product *product.ProductHttpHandler) *RouteGroup {
@@ -40,11 +42,23 @@ func NewHttpServer(cfg core.AppConfigProvider, zapLogger *zap.Logger, baseApiPre
 	})
 
 	app.Use(recover.New())
+
+	app.Use(requestid.New())
+
+	// Use zap via Done callback
 	app.Use(logger.New(logger.Config{
-		Format:     "${time} ${status} - ${method} ${path}\n",
-		TimeFormat: "2003/03/28 15:04:05",
-		TimeZone:   "Asia/Bangkok",
+		Stream: io.Discard,
+		Done: func(c fiber.Ctx, logString []byte) {
+			zapLogger.Info("http request",
+				zap.String("request_id", requestid.FromContext(c)),
+				zap.String("method", c.Method()),
+				zap.String("path", c.Path()),
+				zap.Int("status", c.Response().StatusCode()),
+				zap.String("ip", c.IP()),
+			)
+		},
 	}))
+
 	app.Use(cors.New(cors.Config{
 		AllowOrigins:     []string{"*"},
 		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"},
@@ -53,6 +67,7 @@ func NewHttpServer(cfg core.AppConfigProvider, zapLogger *zap.Logger, baseApiPre
 		AllowCredentials: false,
 		MaxAge:           300,
 	}))
+	
 	app.Use(limiter.New(limiter.Config{
 		Max:               100,
 		Expiration:        60 * time.Second,
