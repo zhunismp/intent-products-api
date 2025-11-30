@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/signal"
@@ -33,7 +34,7 @@ func main() {
 		cfg.GetDBSSLMode(),
 		cfg.GetDBTimezone(),
 	)
-	logger := NewLogger(cfg.GetServerEnv())
+	logger, close := NewLoggerFactory(context.Background(), cfg)
 	baseApiPrefix := cfg.GetServerBaseApiPrefix()
 
 	productDbRepo := NewProductRepository(db, logger)
@@ -57,6 +58,6 @@ func main() {
 
 	logger.Info(fmt.Sprintf("Received shutdown signal %s", sig.String()))
 	httpServer.GracefulShutdown()
+	close()
 	logger.Info("Cleanup finished. Exiting...")
-
 }

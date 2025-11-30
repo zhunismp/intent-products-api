@@ -1,4 +1,4 @@
-package infrastructure
+package config
 
 type ServerConfig struct {
 	Env           string
@@ -19,7 +19,18 @@ type DatabaseConfig struct {
 	Timezone string
 }
 
+type LoggerConfig struct {
+	LogLevel    string
+	LogFilePath string
+	MaxSize     int
+	MaxBackups  int
+	MaxAge      int
+	Compress    bool
+	Endpoint    string
+}
+
 type AppEnvConfig struct {
 	serverCfg *ServerConfig
 	dbCfg     *DatabaseConfig
+	loggerCfg *LoggerConfig
 }
