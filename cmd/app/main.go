@@ -33,20 +33,20 @@ func main() {
 		cfg.GetDBSSLMode(),
 		cfg.GetDBTimezone(),
 	)
-	log := NewLogger(cfg.GetServerEnv())
+	logger := NewLogger(cfg.GetServerEnv())
 	baseApiPrefix := cfg.GetServerBaseApiPrefix()
 
-	productDbRepo := NewProductRepository(db)
-	causeDbRepo := NewCauseRepository(db)
+	productDbRepo := NewProductRepository(db, logger)
+	causeDbRepo := NewCauseRepository(db, logger)
 
-	causeSvc := NewCauseService(causeDbRepo)
-	prioritySvc := NewPriorityService()
-	productSvc := NewProductService(productDbRepo, causeSvc, prioritySvc)
+	causeSvc := NewCauseService(causeDbRepo, logger)
+	prioritySvc := NewPriorityService(logger)
+	productSvc := NewProductService(productDbRepo, causeSvc, prioritySvc, logger)
 
 	// HTTP
-	productHttp := NewProductHttpHandler(productSvc)
+	productHttp := NewProductHttpHandler(productSvc, logger)
 	routeGroup := NewRouteGroup(productHttp)
-	httpServer := NewHttpServer(cfg, log, baseApiPrefix)
+	httpServer := NewHttpServer(cfg, logger, baseApiPrefix)
 	httpServer.SetupRoute(routeGroup)
 	httpServer.Start()
 
@@ -55,8 +55,8 @@ func main() {
 
 	sig := <-quit
 
-	log.Info(fmt.Sprintf("Received shutdown signal %s", sig.String()))
+	logger.Info(fmt.Sprintf("Received shutdown signal %s", sig.String()))
 	httpServer.GracefulShutdown()
-	log.Info("Cleanup finished. Exiting...")
+	logger.Info("Cleanup finished. Exiting...")
 
 }

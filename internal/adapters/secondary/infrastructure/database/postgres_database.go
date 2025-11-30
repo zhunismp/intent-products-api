@@ -13,6 +13,7 @@ import (
 	"gorm.io/gorm/logger"
 )
 
+// TODO: update gorm to v2 and use zap logger instead of gorm logger
 func NewPostgresDatabase(host, user, password, dbname, port, sslmode, TimeZone string) *gorm.DB {
 	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=%s TimeZone=%s",
 		host,

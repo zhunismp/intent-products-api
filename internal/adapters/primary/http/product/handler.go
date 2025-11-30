@@ -7,6 +7,7 @@ import (
 	"github.com/gofiber/fiber/v3"
 	dto "github.com/zhunismp/intent-products-api/internal/adapters/primary/http/shared/dto"
 	core "github.com/zhunismp/intent-products-api/internal/core/domain/product"
+	"go.uber.org/zap"
 )
 
 // for development purpose.
@@ -17,21 +18,29 @@ const OwnerID = 11122
 type ProductHttpHandler struct {
 	productSvc   core.ProductUsecase
 	reqValidator *validator.Validate
+	logger       *zap.Logger
 }
 
-func NewProductHttpHandler(productSvc core.ProductUsecase) *ProductHttpHandler {
+func NewProductHttpHandler(productSvc core.ProductUsecase, logger *zap.Logger) *ProductHttpHandler {
 	// setup validator
 	validate := validator.New()
 	validate.RegisterValidation("date_after_opt", IsDateAfter)
 
-	return &ProductHttpHandler{productSvc: productSvc, reqValidator: validate}
+	return &ProductHttpHandler{
+		productSvc:   productSvc,
+		reqValidator: validate,
+		logger:       logger,
+	}
 }
 
 func (h *ProductHttpHandler) CreateProduct(c fiber.Ctx) error {
+	h.logger.Info("create product request received")
+
 	req := new(CreateProductRequest)
 
 	// parse request body
 	if err := c.Bind().Body(&req); err != nil {
+		h.logger.Warn("failed to parse request body", zap.Error(err))
 		return c.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{ErrorMessage: "can not parse request body"})
 	}
 
@@ -39,12 +48,14 @@ func (h *ProductHttpHandler) CreateProduct(c fiber.Ctx) error {
 	if err := h.reqValidator.Struct(req); err != nil {
 		if errs, ok := err.(validator.ValidationErrors); ok {
 			errMap := GenerateErrorMap(errs)
+			h.logger.Warn("request validation failed", zap.Any("errors", errMap))
 			return c.Status(fiber.StatusBadRequest).JSON(dto.ValidationErrorResponse{
 				ErrorMessage: "invalid request",
 				ErrorFields:  errMap,
 			})
 		}
 
+		h.logger.Error("unexpected validation error", zap.Error(err))
 		return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{ErrorMessage: "something went wrong"})
 	}
 
@@ -73,6 +84,7 @@ func (h *ProductHttpHandler) GetProduct(c fiber.Ctx) error {
 
 	id, err := strconv.ParseUint(idStr, 10, 64)
 	if err != nil {
+		h.logger.Warn("invalid product id parameter", zap.String("id", idStr), zap.Error(err))
 		return c.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{ErrorMessage: "can not parse id"})
 	}
 
@@ -110,10 +122,13 @@ func (h *ProductHttpHandler) GetProductByStatus(c fiber.Ctx) error {
 }
 
 func (h *ProductHttpHandler) UpdatePriority(c fiber.Ctx) error {
+	h.logger.Info("update priority request received")
+
 	req := new(UpdatePriorityRequest)
 
 	// parse request body
 	if err := c.Bind().Body(&req); err != nil {
+		h.logger.Warn("failed to parse request body", zap.Error(err))
 		return c.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{ErrorMessage: "can not parse request body"})
 	}
 
@@ -121,12 +136,14 @@ func (h *ProductHttpHandler) UpdatePriority(c fiber.Ctx) error {
 	if err := h.reqValidator.Struct(req); err != nil {
 		if errs, ok := err.(validator.ValidationErrors); ok {
 			errMap := GenerateErrorMap(errs)
+			h.logger.Warn("request validation failed", zap.Any("errors", errMap))
 			return c.Status(fiber.StatusBadRequest).JSON(dto.ValidationErrorResponse{
 				ErrorMessage: "invalid request",
 				ErrorFields:  errMap,
 			})
 		}
 
+		h.logger.Error("unexpected validation error", zap.Error(err))
 		return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{ErrorMessage: "something went wrong"})
 	}
 
@@ -149,6 +166,7 @@ func (h *ProductHttpHandler) DeleteProduct(c fiber.Ctx) error {
 
 	id, err := strconv.ParseUint(idStr, 10, 64)
 	if err != nil {
+		h.logger.Warn("invalid product id parameter", zap.String("id", idStr), zap.Error(err))
 		return c.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{ErrorMessage: "can not parse id"})
 	}
 
