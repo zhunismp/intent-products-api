@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"log"
 	"strings"
 	"time"
 
@@ -13,6 +14,7 @@ import (
 	logger "github.com/gofiber/fiber/v3/middleware/logger"
 	recover "github.com/gofiber/fiber/v3/middleware/recover"
 	"github.com/gofiber/fiber/v3/middleware/requestid"
+	"github.com/uptrace/opentelemetry-go-extra/otelzap"
 	"github.com/zhunismp/intent-products-api/internal/adapters/primary/http/product"
 	core "github.com/zhunismp/intent-products-api/internal/core/infrastructure/config"
 	"go.uber.org/zap"
@@ -20,7 +22,7 @@ import (
 
 type HttpServer struct {
 	cfg           core.AppConfigProvider
-	log           *zap.Logger
+	log           *otelzap.Logger
 	fiberApp      *fiber.App
 	apiBaseRouter fiber.Router
 	basePath      string
@@ -34,8 +36,8 @@ func NewRouteGroup(product *product.ProductHttpHandler) *RouteGroup {
 	return &RouteGroup{product: product}
 }
 
-func NewHttpServer(cfg core.AppConfigProvider, zapLogger *zap.Logger, baseApiPrefix string) *HttpServer {
-	validateArguments(cfg, zapLogger, &baseApiPrefix)
+func NewHttpServer(cfg core.AppConfigProvider, otelLogger *otelzap.Logger, baseApiPrefix string) *HttpServer {
+	validateArguments(cfg, otelLogger, &baseApiPrefix)
 
 	app := fiber.New(fiber.Config{
 		AppName: cfg.GetServerName(),
@@ -49,7 +51,7 @@ func NewHttpServer(cfg core.AppConfigProvider, zapLogger *zap.Logger, baseApiPre
 	app.Use(logger.New(logger.Config{
 		Stream: io.Discard,
 		Done: func(c fiber.Ctx, logString []byte) {
-			zapLogger.Info("http request",
+			otelLogger.Info("http request",
 				zap.String("request_id", requestid.FromContext(c)),
 				zap.String("method", c.Method()),
 				zap.String("path", c.Path()),
@@ -67,7 +69,7 @@ func NewHttpServer(cfg core.AppConfigProvider, zapLogger *zap.Logger, baseApiPre
 		AllowCredentials: false,
 		MaxAge:           300,
 	}))
-	
+
 	app.Use(limiter.New(limiter.Config{
 		Max:               100,
 		Expiration:        60 * time.Second,
@@ -80,11 +82,11 @@ func NewHttpServer(cfg core.AppConfigProvider, zapLogger *zap.Logger, baseApiPre
 	}))
 
 	apiGroup := app.Group(baseApiPrefix)
-	zapLogger.Info("Fiber HTTP server core initialized with middleware.", zap.String("baseApiPrefix", baseApiPrefix))
+	otelLogger.Info("Fiber HTTP server core initialized with middleware.", zap.String("baseApiPrefix", baseApiPrefix))
 
 	return &HttpServer{
 		cfg:           cfg,
-		log:           zapLogger,
+		log:           otelLogger,
 		fiberApp:      app,
 		apiBaseRouter: apiGroup,
 		basePath:      baseApiPrefix,
@@ -120,7 +122,7 @@ func (s *HttpServer) SetupRoute(routeGroup *RouteGroup) {
 		router.Get("/:id", productHandler.GetProduct)
 		router.Get("/status/:status", productHandler.GetProductByStatus)
 		router.Post("/", productHandler.CreateProduct)
-		router.Put("/priority", productHandler.UpdatePriority)
+		router.Put("/position", productHandler.MoveProductPosition)
 		router.Delete("/:id", productHandler.DeleteProduct)
 	})
 }
@@ -158,19 +160,19 @@ func (s *HttpServer) registerAPIGroup(subPrefix string, groupRegistrar func(rout
 	s.log.Info("Registered API group", zap.String("fullPrefix", fullPrefix))
 }
 
-func validateArguments(cfg core.AppConfigProvider, zapLogger *zap.Logger, baseApiPrefix *string) {
+func validateArguments(cfg core.AppConfigProvider, otelLogger *otelzap.Logger, baseApiPrefix *string) {
 	if cfg == nil {
-		zapLogger.Fatal("Server configuration is missing for HTTP server initialization")
+		log.Fatal("Server configuration is missing for HTTP server initialization")
 	}
-	if zapLogger == nil {
-		zapLogger.Fatal("Logger instance is missing for HTTP server initialization")
+	if otelLogger == nil {
+		log.Fatal("Logger instance is missing for HTTP server initialization")
 	}
 	if baseApiPrefix != nil {
 		if *baseApiPrefix == "" {
-			zapLogger.Warn("baseApiPrefix is empty, API routes will be registered at the root.")
+			otelLogger.Warn("baseApiPrefix is empty, API routes will be registered at the root.")
 		} else if !strings.HasPrefix(*baseApiPrefix, "/") {
 			*baseApiPrefix = "/" + *baseApiPrefix
-			zapLogger.Warn("baseApiPrefix did not start with '/', prepended it.", zap.String("newPrefix", *baseApiPrefix))
+			otelLogger.Warn("baseApiPrefix did not start with '/', prepended it.", zap.String("newPrefix", *baseApiPrefix))
 		}
 	}
 }

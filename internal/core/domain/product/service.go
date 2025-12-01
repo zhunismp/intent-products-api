@@ -3,99 +3,91 @@ package product
 import (
 	"context"
 
+	"github.com/uptrace/opentelemetry-go-extra/otelzap"
 	"github.com/zhunismp/intent-products-api/internal/core/domain/cause"
-	"github.com/zhunismp/intent-products-api/internal/core/domain/priority"
-	"github.com/zhunismp/intent-products-api/internal/core/domain/shared/apperrors"
+	"github.com/zhunismp/intent-products-api/internal/core/domain/shared/utils/ordering"
+	"go.opentelemetry.io/otel"
 	"go.uber.org/zap"
 )
 
 type productService struct {
 	productRepo ProductRepository
 	causeSvc    cause.CauseUsecase
-	prioritySvc priority.PriorityUsecase
-	logger      *zap.Logger
+	logger      *otelzap.Logger
 }
 
 func NewProductService(
 	productRepo ProductRepository,
 	causeSvc cause.CauseUsecase,
-	prioritySvc priority.PriorityUsecase,
-	logger *zap.Logger,
+	logger *otelzap.Logger,
 ) ProductUsecase {
 	return &productService{
 		productRepo: productRepo,
 		causeSvc:    causeSvc,
-		prioritySvc: prioritySvc,
-		logger: logger,
+		logger:      logger,
 	}
 }
 
-func (s *productService) CreateProduct(ctx context.Context, cmd CreateProductCmd) error {
+func (s *productService) CreateProduct(
+	ctx context.Context, 
+	ownerID uint, 
+	title string, 
+	price float64, 
+	link string, 
+	reasons []string,
+) error {
+	// tracer
+	tr := otel.Tracer("product-service")
+	ctx, span := tr.Start(ctx, "CreateProduct")
+	defer span.End()
+
+	newPosition, _ := ordering.KeyBetween("", "")
 
 	product := &Product{
-		OwnerID:  cmd.OwnerID,
-		Name:     cmd.Title,
-		ImageUrl: nil,
-		Link:     cmd.Link,
-		Price:    cmd.Price,
+		OwnerID:  ownerID,
+		Name:     title,
+		ImageUrl: "",
+		Link:     link,
+		Price:    price,
 		Status:   PENDING,
+		Position: newPosition,
 	}
-
-	lastPriority, err := s.productRepo.GetLastProductPriority(ctx, cmd.OwnerID)
-	if err != nil {
-		s.logger.Error("failed to get last product priority",
-			zap.Uint("owner_id", cmd.OwnerID),
-			zap.Error(err),
-		)
-		return err
-	}
-
-	newPriority, err := s.prioritySvc.CalculateNewPriority(ctx, nil, &lastPriority)
-	if err != nil {
-		s.logger.Error("failed to calculate new priority",
-			zap.Uint("owner_id", cmd.OwnerID),
-			zap.Int64("last_priority", lastPriority),
-			zap.Error(err),
-		)
-		return err
-	}
-	product.Priority = newPriority
 
 	productID, err := s.productRepo.CreateProduct(ctx, product)
 	if err != nil {
-		s.logger.Error("failed to create product in repository",
-			zap.Uint("owner_id", cmd.OwnerID),
-			zap.String("title", cmd.Title),
+		s.logger.Ctx(ctx).Error("failed to create product in repository",
+			zap.Uint("owner_id", ownerID),
+			zap.String("title", title),
 			zap.Error(err),
 		)
 		return err
 	}
 
-	if err := s.causeSvc.BulkCreateCauses(ctx, productID, cmd.Reasons); err != nil {
-		s.logger.Error("failed to create causes for product",
+	if err := s.causeSvc.BulkCreateCauses(ctx, productID, reasons); err != nil {
+		s.logger.Ctx(ctx).Error("failed to create causes for product",
 			zap.Uint("product_id", productID),
-			zap.Int("causes_count", len(cmd.Reasons)),
+			zap.Int("causes_count", len(reasons)),
 			zap.Error(err),
 		)
 		return err
 	}
 
-	s.logger.Info("product created successfully",
+	s.logger.Ctx(ctx).Info("product created successfully",
 		zap.Uint("product_id", productID),
-		zap.Uint("owner_id", cmd.OwnerID),
-		zap.Int("causes_count", len(cmd.Reasons)),
+		zap.Uint("owner_id", ownerID),
+		zap.Int("causes_count", len(reasons)),
 	)
 
 	return nil
 }
 
-func (s *productService) GetProduct(ctx context.Context, cmd GetProductCmd) (*Product, error) {
+func (s *productService) GetProduct(ctx context.Context, ownerID, productID uint) (*Product, error) {
 
-	product, err := s.productRepo.GetProduct(ctx, cmd.OwnerID, cmd.ProductID)
+	product, err := s.productRepo.GetProduct(ctx, ownerID, productID)
 	if err != nil {
-		s.logger.Error("failed to get product",
-			zap.Uint("owner_id", cmd.OwnerID),
-			zap.Uint("product_id", cmd.ProductID),
+		s.logger.Ctx(ctx).Error("failed to get product",
+			zap.Uint("owner_id", ownerID),
+			zap.Uint("product_id", productID),
 			zap.Error(err),
 		)
 		return nil, err
@@ -103,7 +95,7 @@ func (s *productService) GetProduct(ctx context.Context, cmd GetProductCmd) (*Pr
 
 	causes, err := s.causeSvc.GetCauses(ctx, product.ID)
 	if err != nil {
-		s.logger.Error("failed to get causes for product",
+		s.logger.Ctx(ctx).Error("failed to get causes for product",
 			zap.Uint("product_id", product.ID),
 			zap.Error(err),
 		)
@@ -112,7 +104,7 @@ func (s *productService) GetProduct(ctx context.Context, cmd GetProductCmd) (*Pr
 
 	product.Causes = causes
 
-	s.logger.Info("product fetched successfully",
+	s.logger.Ctx(ctx).Info("product fetched successfully",
 		zap.Uint("product_id", product.ID),
 		zap.Int("causes_count", len(causes)),
 	)
@@ -120,146 +112,90 @@ func (s *productService) GetProduct(ctx context.Context, cmd GetProductCmd) (*Pr
 	return product, nil
 }
 
-func (s *productService) GetProductByStatus(ctx context.Context, cmd GetProductByStatusCmd) ([]*Product, error) {
+func (s *productService) GetProductByStatus(ctx context.Context, ownerID uint, status string) ([]*Product, error) {
 
-	products, err := s.productRepo.GetProductByStatus(ctx, cmd.OwnerID, cmd.Status)
+	products, err := s.productRepo.GetProductByStatus(ctx, ownerID, status)
 	if err != nil {
-		s.logger.Error("failed to get products by status",
-			zap.Uint("owner_id", cmd.OwnerID),
-			zap.String("status", string(cmd.Status)),
+		s.logger.Ctx(ctx).Error("failed to get products by status",
+			zap.Uint("owner_id", ownerID),
+			zap.String("status", string(status)),
 			zap.Error(err),
 		)
 		return nil, err
 	}
 
-	s.logger.Info("products fetched by status",
-		zap.Uint("owner_id", cmd.OwnerID),
-		zap.String("status", string(cmd.Status)),
+	s.logger.Ctx(ctx).Info("products fetched by status",
+		zap.Uint("owner_id", ownerID),
+		zap.String("status", string(status)),
 		zap.Int("count", len(products)),
 	)
 
 	return products, nil
 }
 
-func (s *productService) UpdatePriority(ctx context.Context, cmd UpdatePriorityCmd) error {
+func (s *productService) Move(ctx context.Context, ownerID uint, productID uint, productAfterID *uint) error {
+	var prevPos, nextPos string
 
-	if cmd.ProductIDBefore == nil && cmd.ProductIDAfter == nil {
-		s.logger.Error("invalid priority update request - missing before/after reference",
-			zap.Uint("product_id", cmd.ProductID),
-		)
-		return apperrors.New(apperrors.ErrCodeValidation, "before or after product must be set", nil)
-	}
-
-	ids := []uint{cmd.ProductID}
-	if cmd.ProductIDBefore != nil {
-		ids = append(ids, *cmd.ProductIDBefore)
-	}
-	if cmd.ProductIDAfter != nil {
-		ids = append(ids, *cmd.ProductIDAfter)
-	}
-
-	products, err := s.productRepo.BulkGetProducts(ctx, cmd.OwnerID, ids)
-	if err != nil {
-		s.logger.Error("failed to bulk get products",
-			zap.Uint("owner_id", cmd.OwnerID),
-			zap.Uints("product_ids", ids),
-			zap.Error(err),
-		)
-		return err
-	}
-
-	productMap := make(map[uint]*Product, len(products))
-	for i := range products {
-		productMap[products[i].ID] = products[i]
-	}
-
-	product, ok := productMap[cmd.ProductID]
-	if !ok {
-		s.logger.Error("product not found for priority update",
-			zap.Uint("product_id", cmd.ProductID),
-			zap.Uint("owner_id", cmd.OwnerID),
-		)
-		return apperrors.New(apperrors.ErrCodeNotFound, "product not found", nil)
-	}
-
-	var beforePriority, afterPriority *int64
-	if cmd.ProductIDBefore != nil {
-		if p, ok := productMap[*cmd.ProductIDBefore]; ok {
-			beforePriority = &p.Priority
-		} else {
-			s.logger.Error("before product not found",
-				zap.Uint("product_id_before", *cmd.ProductIDBefore),
-			)
-			return apperrors.New(apperrors.ErrCodeNotFound, "before product not found", nil)
+	if productAfterID == nil {
+		// moving to first product
+		np, err := s.productRepo.GetFirstPosition(ctx, ownerID)
+		if err != nil {
+			// TODO: handle log
+			return err
 		}
-	}
-	if cmd.ProductIDAfter != nil {
-		if p, ok := productMap[*cmd.ProductIDAfter]; ok {
-			afterPriority = &p.Priority
-		} else {
-			s.logger.Error("after product not found",
-				zap.Uint("product_id_after", *cmd.ProductIDAfter),
-			)
-			return apperrors.New(apperrors.ErrCodeNotFound, "after product not found", nil)
+
+		nextPos = np
+	} else {
+		// moving after specific item
+		pp, err := s.productRepo.GetPositionByProductID(ctx, ownerID, *productAfterID)
+		if err != nil {
+			// TODO: handle log
+			return err
 		}
+		np, err := s.productRepo.GetNextPosition(ctx, ownerID, pp)
+		if err != nil {
+			// TODO: handle log
+			return err
+		}
+		prevPos, nextPos = pp, np
 	}
 
-	newPriority, err := s.prioritySvc.CalculateNewPriority(ctx, beforePriority, afterPriority)
+	newPos, err := ordering.KeyBetween(prevPos, nextPos)
 	if err != nil {
-		s.logger.Error("failed to calculate new priority",
-			zap.Uint("product_id", cmd.ProductID),
-			zap.Int64p("before_priority", beforePriority),
-			zap.Int64p("after_priority", afterPriority),
-			zap.Error(err),
-		)
+		// TODO: handle log
 		return err
 	}
 
-	oldPriority := product.Priority
-	product.Priority = newPriority
-
-	_, err = s.productRepo.CreateProduct(ctx, product)
-	if err != nil {
-		s.logger.Error("failed to update product priority",
-			zap.Uint("product_id", cmd.ProductID),
-			zap.Int64("old_priority", oldPriority),
-			zap.Int64("new_priority", newPriority),
-			zap.Error(err),
-		)
+	if err := s.productRepo.UpdatePosition(ctx, ownerID, productID, newPos); err != nil {
+		// TODO: handle log
 		return err
 	}
-
-	s.logger.Info("product priority updated successfully",
-		zap.Uint("product_id", cmd.ProductID),
-		zap.Int64("old_priority", oldPriority),
-		zap.Int64("new_priority", newPriority),
-	)
 
 	return nil
 }
 
-func (s *productService) DeleteProduct(ctx context.Context, cmd DeleteProductCmd) error {
+func (s *productService) DeleteProduct(ctx context.Context, ownerID, productID uint) error {
 
-	if err := s.productRepo.DeleteProduct(ctx, cmd.OwnerID, cmd.ProductID); err != nil {
-		s.logger.Error("failed to delete product from repository",
-			zap.Uint("owner_id", cmd.OwnerID),
-			zap.Uint("product_id", cmd.ProductID),
+	if err := s.productRepo.DeleteProduct(ctx, ownerID, productID); err != nil {
+		s.logger.Ctx(ctx).Error("failed to delete product from repository",
+			zap.Uint("owner_id", ownerID),
+			zap.Uint("product_id", productID),
 			zap.Error(err),
 		)
 		return err
 	}
 
-	if err := s.causeSvc.DeleteCauses(ctx, cmd.ProductID); err != nil {
-		s.logger.Error("failed to delete causes for product",
-			zap.Uint("product_id", cmd.ProductID),
+	if err := s.causeSvc.DeleteCauses(ctx,productID); err != nil {
+		s.logger.Ctx(ctx).Error("failed to delete causes for product",
+			zap.Uint("product_id", productID),
 			zap.Error(err),
 		)
 		return err
 	}
 
-	s.logger.Info("product deleted successfully",
-		zap.Uint("owner_id", cmd.OwnerID),
-		zap.Uint("product_id", cmd.ProductID),
+	s.logger.Ctx(ctx).Info("product deleted successfully",
+		zap.Uint("owner_id", ownerID),
+		zap.Uint("product_id", productID),
 	)
 
 	return nil

@@ -27,6 +27,7 @@ type LoggerConfig struct {
 	MaxAge      int
 	Compress    bool
 	Endpoint    string
+	LogPath     string
 }
 
 type AppEnvConfig struct {

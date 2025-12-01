@@ -7,17 +7,15 @@ import (
 
 	domain "github.com/zhunismp/intent-products-api/internal/core/domain/product"
 	"github.com/zhunismp/intent-products-api/internal/core/domain/shared/apperrors"
-	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
 
 type productRepository struct {
-	db     *gorm.DB
-	logger *zap.Logger
+	db *gorm.DB
 }
 
-func NewProductRepository(db *gorm.DB, logger *zap.Logger) domain.ProductRepository {
-	return &productRepository{db: db, logger: logger}
+func NewProductRepository(db *gorm.DB) domain.ProductRepository {
+	return &productRepository{db: db}
 }
 
 func (r *productRepository) CreateProduct(ctx context.Context, product *domain.Product) (uint, error) {
@@ -90,57 +88,6 @@ func (r *productRepository) GetProductByStatus(ctx context.Context, ownerID uint
 	return products, nil
 }
 
-func (r *productRepository) GetLastProductPriority(ctx context.Context, ownerID uint) (int64, error) {
-	var maxPriority *int64
-
-	err := r.db.WithContext(ctx).
-		Model(&ProductModel{}).
-		Where("owner_id = ?", ownerID).
-		Select("MAX(priority)").
-		Scan(&maxPriority).Error
-
-	if err != nil {
-		return 0, apperrors.New(
-			apperrors.ErrCodeInternal,
-			"failed to get last product priority",
-			err,
-		)
-	}
-
-	if maxPriority == nil {
-		return 0, nil
-	}
-
-	return *maxPriority, nil
-}
-
-func (r *productRepository) BulkGetProducts(ctx context.Context, ownerID uint, productIDs []uint) ([]*domain.Product, error) {
-	if len(productIDs) == 0 {
-		return []*domain.Product{}, nil
-	}
-
-	var models []ProductModel
-
-	err := r.db.WithContext(ctx).
-		Where("owner_id = ? AND id IN ?", ownerID, productIDs).
-		Find(&models).Error
-
-	if err != nil {
-		return nil, apperrors.New(
-			apperrors.ErrCodeInternal,
-			"failed to bulk get products",
-			err,
-		)
-	}
-
-	products := make([]*domain.Product, 0, len(models))
-	for _, m := range models {
-		products = append(products, toDomainProduct(m))
-	}
-
-	return products, nil
-}
-
 func (r *productRepository) DeleteProduct(ctx context.Context, ownerID uint, productID uint) error {
 	result := r.db.WithContext(ctx).
 		Where("id = ? AND owner_id = ?", productID, ownerID).
@@ -156,5 +103,132 @@ func (r *productRepository) DeleteProduct(ctx context.Context, ownerID uint, pro
 			nil,
 		)
 	}
+	return nil
+}
+
+func (r *productRepository) GetFirstPosition(ctx context.Context, ownerID uint) (string, error) {
+	var position string
+	
+	err := r.db.WithContext(ctx).
+		Model(&domain.Product{}).
+		Select("position").
+		Where("owner_id = ?", ownerID).
+		Order("position ASC").
+		Limit(1).
+		Pluck("position", &position).
+		Error
+	
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return "", apperrors.New(
+				apperrors.ErrCodeNotFound,
+				fmt.Sprintf("no products found for owner id %d", ownerID),
+				err,
+			)
+		}
+		return "", apperrors.New(
+			apperrors.ErrCodeInternal,
+			"failed to get first position",
+			err,
+		)
+	}
+	
+	if position == "" {
+		return "", apperrors.New(
+			apperrors.ErrCodeNotFound,
+			fmt.Sprintf("no products found for owner id %d", ownerID),
+			nil,
+		)
+	}
+	
+	return position, nil
+}
+
+func (r *productRepository) GetPositionByProductID(ctx context.Context, ownerID uint, productID uint) (string, error) {
+	var position string
+	
+	err := r.db.WithContext(ctx).
+		Model(&domain.Product{}).
+		Select("position").
+		Where("id = ? AND owner_id = ?", productID, ownerID).
+		Pluck("position", &position).
+		Error
+	
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return "", apperrors.New(
+				apperrors.ErrCodeNotFound,
+				fmt.Sprintf("product id %d not found for owner id %d", productID, ownerID),
+				err,
+			)
+		}
+		return "", apperrors.New(
+			apperrors.ErrCodeInternal,
+			"failed to get position by product id",
+			err,
+		)
+	}
+	
+	if position == "" {
+		return "", apperrors.New(
+			apperrors.ErrCodeNotFound,
+			fmt.Sprintf("product id %d not found for owner id %d", productID, ownerID),
+			nil,
+		)
+	}
+	
+	return position, nil
+}
+
+func (r *productRepository) GetNextPosition(ctx context.Context, ownerID uint, position string) (string, error) {
+	var nextPosition string
+	
+	err := r.db.WithContext(ctx).
+		Model(&domain.Product{}).
+		Select("position").
+		Where("owner_id = ? AND position > ?", ownerID, position).
+		Order("position ASC").
+		Limit(1).
+		Pluck("position", &nextPosition).
+		Error
+	
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			// No next position means this is the last item - return empty string
+			return "", nil
+		}
+		return "", apperrors.New(
+			apperrors.ErrCodeInternal,
+			"failed to get next position",
+			err,
+		)
+	}
+	
+	// Empty result means no next item (last item in list)
+	return nextPosition, nil
+}
+
+func (r *productRepository) UpdatePosition(ctx context.Context, ownerID uint, productID uint, position string) error {
+	result := r.db.WithContext(ctx).
+		Model(&domain.Product{}).
+		Where("id = ? AND owner_id = ?", productID, ownerID).
+		Update("position", position)
+	
+	if result.Error != nil {
+		return apperrors.New(
+			apperrors.ErrCodeInternal,
+			"failed to update position",
+			result.Error,
+		)
+	}
+	
+	if result.RowsAffected == 0 {
+		return apperrors.New(
+			apperrors.ErrCodeNotFound,
+			fmt.Sprintf("product id %d not found for owner id %d", productID, ownerID),
+			nil,
+		)
+	}
+	
 	return nil
 }

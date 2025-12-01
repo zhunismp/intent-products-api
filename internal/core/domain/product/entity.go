@@ -10,11 +10,11 @@ type Product struct {
 	ID       uint
 	OwnerID  uint
 	Name     string
-	ImageUrl *string
-	Link     *string
+	ImageUrl string
+	Link     string
 	Price    float64
 	Status   string
-	Priority int64
+	Position string
 	Causes   []*cause.Cause
 
 	CreatedAt time.Time

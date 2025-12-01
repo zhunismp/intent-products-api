@@ -1,4 +1,4 @@
-package logger
+package telemetry
 
 import (
 	"context"
@@ -7,7 +7,7 @@ import (
 	"os"
 
 	"github.com/uptrace/opentelemetry-go-extra/otelzap"
-	"github.com/zhunismp/intent-products-api/internal/infrastructure/config"
+	"github.com/zhunismp/intent-products-api/internal/adapters/secondary/infrastructure/config"
 	"go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploghttp"
 	"go.opentelemetry.io/otel/log/global"
 	otelLog "go.opentelemetry.io/otel/sdk/log"
@@ -22,6 +22,11 @@ const (
 	dev  = "development"
 	prod = "production"
 )
+
+func NewLogger(env string) (*zap.Logger, func(context.Context)) {
+	logger := zap.Must(zap.NewProduction())
+	return logger, func (ctx context.Context) { logger.Sync() }
+}
 
 func newProductionLogger(ctx context.Context, appCfg *config.AppEnvConfig) (*otelzap.Logger, func(), error) {
 	lumberjackLogger := &lumberjack.Logger{
@@ -54,6 +59,7 @@ func newProductionLogger(ctx context.Context, appCfg *config.AppEnvConfig) (*ote
 
 	exporter, err := otlploghttp.New(ctx,
 		otlploghttp.WithEndpoint(appCfg.GetLogEndpoint()),
+		otlploghttp.WithURLPath(appCfg.GetLogPath()),
 		otlploghttp.WithInsecure(),
 	)
 	if err != nil {
@@ -94,7 +100,7 @@ func NewLoggerFactory(ctx context.Context, appCfg *config.AppEnvConfig) (*otelza
 	case prod:
 		logger, cleanupFn, err := newProductionLogger(ctx, appCfg)
 		if err != nil {
-			log.Fatal("error starting otel logging")
+			log.Fatalf("ERROR: error starting otel logging - %v", err)
 		}
 		return logger, cleanupFn
 	default:

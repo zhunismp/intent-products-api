@@ -9,14 +9,13 @@ import (
 
 	. "github.com/zhunismp/intent-products-api/internal/adapters/primary/http"
 	. "github.com/zhunismp/intent-products-api/internal/adapters/primary/http/product"
+	. "github.com/zhunismp/intent-products-api/internal/adapters/secondary/infrastructure/config"
 	. "github.com/zhunismp/intent-products-api/internal/adapters/secondary/infrastructure/database"
+	. "github.com/zhunismp/intent-products-api/internal/adapters/secondary/infrastructure/telemetry"
 	. "github.com/zhunismp/intent-products-api/internal/adapters/secondary/repositories/cause"
 	. "github.com/zhunismp/intent-products-api/internal/adapters/secondary/repositories/product"
 	. "github.com/zhunismp/intent-products-api/internal/core/domain/cause"
-	. "github.com/zhunismp/intent-products-api/internal/core/domain/priority"
 	. "github.com/zhunismp/intent-products-api/internal/core/domain/product"
-	. "github.com/zhunismp/intent-products-api/internal/infrastructure/config"
-	. "github.com/zhunismp/intent-products-api/internal/infrastructure/logger"
 )
 
 func main() {
@@ -34,15 +33,15 @@ func main() {
 		cfg.GetDBSSLMode(),
 		cfg.GetDBTimezone(),
 	)
+	_, err = SetupTelemetry(context.Background(), cfg.GetServerName(), cfg.GetServerEnv())
 	logger, close := NewLoggerFactory(context.Background(), cfg)
 	baseApiPrefix := cfg.GetServerBaseApiPrefix()
 
-	productDbRepo := NewProductRepository(db, logger)
-	causeDbRepo := NewCauseRepository(db, logger)
+	productDbRepo := NewProductRepository(db)
+	causeDbRepo := NewCauseRepository(db)
 
 	causeSvc := NewCauseService(causeDbRepo, logger)
-	prioritySvc := NewPriorityService(logger)
-	productSvc := NewProductService(productDbRepo, causeSvc, prioritySvc, logger)
+	productSvc := NewProductService(productDbRepo, causeSvc, logger)
 
 	// HTTP
 	productHttp := NewProductHttpHandler(productSvc, logger)

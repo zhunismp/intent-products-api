@@ -57,12 +57,13 @@ func LoadConfig(envFilePath ...string) (*AppEnvConfig, error) {
 
 		loggerCfg := &LoggerConfig{
 			LogLevel:    getEnv("LOGGING_LEVEL", "INFO"),
-			LogFilePath: getEnv("LOGGING_PATH", "/var/log/app.log"),
+			LogFilePath: getEnv("LOGGING_PATH", "./applog/application.log"),
 			MaxSize:     maxSize,
 			MaxBackups:  maxBackups,
 			MaxAge:      maxAge,
 			Compress:    compress,
-			Endpoint:    getEnv("LOGGING_ENDPOINT", "0.0.0.0:3100/otlp/v1/logs"),
+			Endpoint:    getEnv("LOGGING_ENDPOINT", "localhost:3100"),
+			LogPath:     getEnv("LOGGING_PATH", "/otlp/v1/logs"),
 		}
 
 		if dbCfg.User == "" {
@@ -140,3 +141,4 @@ func (c *AppEnvConfig) GetMaxBackups() int     { return c.loggerCfg.MaxBackups }
 func (c *AppEnvConfig) GetMaxAge() int         { return c.loggerCfg.MaxAge }
 func (c *AppEnvConfig) GetCompress() bool      { return c.loggerCfg.Compress }
 func (c *AppEnvConfig) GetLogEndpoint() string { return c.loggerCfg.Endpoint }
+func (c *AppEnvConfig) GetLogPath() string     { return c.loggerCfg.LogPath }
