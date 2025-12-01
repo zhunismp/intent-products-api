@@ -29,19 +29,17 @@ func NewProductService(
 }
 
 func (s *productService) CreateProduct(
-	ctx context.Context, 
-	ownerID uint, 
-	title string, 
-	price float64, 
-	link string, 
+	ctx context.Context,
+	ownerID uint,
+	title string,
+	price float64,
+	link string,
 	reasons []string,
 ) error {
 	// tracer
 	tr := otel.Tracer("product-service")
 	ctx, span := tr.Start(ctx, "CreateProduct")
 	defer span.End()
-
-	newPosition, _ := ordering.KeyBetween("", "")
 
 	product := &Product{
 		OwnerID:  ownerID,
@@ -50,7 +48,6 @@ func (s *productService) CreateProduct(
 		Link:     link,
 		Price:    price,
 		Status:   PENDING,
-		Position: newPosition,
 	}
 
 	productID, err := s.productRepo.CreateProduct(ctx, product)
@@ -185,7 +182,7 @@ func (s *productService) DeleteProduct(ctx context.Context, ownerID, productID u
 		return err
 	}
 
-	if err := s.causeSvc.DeleteCauses(ctx,productID); err != nil {
+	if err := s.causeSvc.DeleteCauses(ctx, productID); err != nil {
 		s.logger.Ctx(ctx).Error("failed to delete causes for product",
 			zap.Uint("product_id", productID),
 			zap.Error(err),

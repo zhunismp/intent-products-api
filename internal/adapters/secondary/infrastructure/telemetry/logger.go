@@ -15,7 +15,6 @@ import (
 	semconv "go.opentelemetry.io/otel/semconv/v1.26.0"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
-	"gopkg.in/natefinch/lumberjack.v2"
 )
 
 const (
@@ -29,22 +28,12 @@ func NewLogger(env string) (*zap.Logger, func(context.Context)) {
 }
 
 func newProductionLogger(ctx context.Context, appCfg *config.AppEnvConfig) (*otelzap.Logger, func(), error) {
-	lumberjackLogger := &lumberjack.Logger{
-		Filename:   appCfg.GetLogFilePath(),
-		MaxSize:    appCfg.GetMaxSize(),
-		MaxBackups: appCfg.GetMaxBackups(),
-		MaxAge:     appCfg.GetMaxAge(),
-		Compress:   appCfg.GetCompress(),
-	}
 
 	encCfg := zap.NewProductionEncoderConfig()
 	encCfg.TimeKey = "ts"
 	encCfg.EncodeTime = zapcore.ISO8601TimeEncoder
 
-	fileCore := zapcore.NewCore(zapcore.NewJSONEncoder(encCfg), zapcore.AddSync(lumberjackLogger), zapcore.InfoLevel)
-	consoleCore := zapcore.NewCore(zapcore.NewConsoleEncoder(encCfg), zapcore.AddSync(os.Stdout), zapcore.InfoLevel)
-	core := zapcore.NewTee(fileCore, consoleCore)
-
+	core := zapcore.NewCore(zapcore.NewConsoleEncoder(encCfg), zapcore.AddSync(os.Stdout), zapcore.InfoLevel)
 	zapLogger := zap.New(core, zap.AddCaller(), zap.AddStacktrace(zapcore.ErrorLevel))
 
 	res, err := resource.New(ctx,
@@ -81,7 +70,6 @@ func newProductionLogger(ctx context.Context, appCfg *config.AppEnvConfig) (*ote
 
 	cleanup := func() {
 		_ = otelLogger.Sync()
-		_ = lumberjackLogger.Close()
 		_ = provider.Shutdown(context.Background())
 	}
 

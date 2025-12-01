@@ -7,6 +7,7 @@ import (
 
 	domain "github.com/zhunismp/intent-products-api/internal/core/domain/product"
 	"github.com/zhunismp/intent-products-api/internal/core/domain/shared/apperrors"
+	"github.com/zhunismp/intent-products-api/internal/core/domain/shared/utils/ordering"
 	"gorm.io/gorm"
 )
 
@@ -19,6 +20,37 @@ func NewProductRepository(db *gorm.DB) domain.ProductRepository {
 }
 
 func (r *productRepository) CreateProduct(ctx context.Context, product *domain.Product) (uint, error) {
+	// Get the last position to append the new product at the end
+	var lastPosition string
+	err := r.db.WithContext(ctx).
+		Table("products").
+		Select("position").
+		Where("owner_id = ?", product.OwnerID).
+		Order("position COLLATE \"C\" DESC").
+		Limit(1).
+		Pluck("position", &lastPosition).
+		Error
+
+	// Ignore record not found as it's first product
+	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+		return 0, apperrors.New(
+			apperrors.ErrCodeInternal,
+			"failed to get last position",
+			err,
+		)
+	}
+
+	// Generate new position after the last item
+	newPosition, err := ordering.KeyBetween(lastPosition, "")
+	if err != nil {
+		return 0, apperrors.New(
+			apperrors.ErrCodeInternal,
+			"failed to generate position",
+			err,
+		)
+	}
+
+	product.Position = newPosition
 	model := toProductModel(product)
 
 	if err := r.db.WithContext(ctx).Save(&model).Error; err != nil {
@@ -61,7 +93,7 @@ func (r *productRepository) GetProductByStatus(ctx context.Context, ownerID uint
 
 	err := r.db.WithContext(ctx).
 		Where("owner_id = ? AND status = ?", ownerID, status).
-		Order("priority ASC").
+		Order("position COLLATE \"C\" ASC"). // binary sorting
 		Find(&models).Error
 
 	if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -108,16 +140,16 @@ func (r *productRepository) DeleteProduct(ctx context.Context, ownerID uint, pro
 
 func (r *productRepository) GetFirstPosition(ctx context.Context, ownerID uint) (string, error) {
 	var position string
-	
+
 	err := r.db.WithContext(ctx).
-		Model(&domain.Product{}).
+		Table("products").
 		Select("position").
 		Where("owner_id = ?", ownerID).
-		Order("position ASC").
+		Order("position COLLATE \"C\" ASC").
 		Limit(1).
 		Pluck("position", &position).
 		Error
-	
+
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return "", apperrors.New(
@@ -132,7 +164,7 @@ func (r *productRepository) GetFirstPosition(ctx context.Context, ownerID uint) 
 			err,
 		)
 	}
-	
+
 	if position == "" {
 		return "", apperrors.New(
 			apperrors.ErrCodeNotFound,
@@ -140,20 +172,20 @@ func (r *productRepository) GetFirstPosition(ctx context.Context, ownerID uint) 
 			nil,
 		)
 	}
-	
+
 	return position, nil
 }
 
 func (r *productRepository) GetPositionByProductID(ctx context.Context, ownerID uint, productID uint) (string, error) {
 	var position string
-	
+
 	err := r.db.WithContext(ctx).
-		Model(&domain.Product{}).
+		Table("products").
 		Select("position").
 		Where("id = ? AND owner_id = ?", productID, ownerID).
 		Pluck("position", &position).
 		Error
-	
+
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return "", apperrors.New(
@@ -168,7 +200,7 @@ func (r *productRepository) GetPositionByProductID(ctx context.Context, ownerID 
 			err,
 		)
 	}
-	
+
 	if position == "" {
 		return "", apperrors.New(
 			apperrors.ErrCodeNotFound,
@@ -176,22 +208,22 @@ func (r *productRepository) GetPositionByProductID(ctx context.Context, ownerID 
 			nil,
 		)
 	}
-	
+
 	return position, nil
 }
 
 func (r *productRepository) GetNextPosition(ctx context.Context, ownerID uint, position string) (string, error) {
 	var nextPosition string
-	
+
 	err := r.db.WithContext(ctx).
-		Model(&domain.Product{}).
+		Table("products").
 		Select("position").
 		Where("owner_id = ? AND position > ?", ownerID, position).
-		Order("position ASC").
+		Order("position COLLATE \"C\" ASC").
 		Limit(1).
 		Pluck("position", &nextPosition).
 		Error
-	
+
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			// No next position means this is the last item - return empty string
@@ -203,17 +235,17 @@ func (r *productRepository) GetNextPosition(ctx context.Context, ownerID uint, p
 			err,
 		)
 	}
-	
+
 	// Empty result means no next item (last item in list)
 	return nextPosition, nil
 }
 
 func (r *productRepository) UpdatePosition(ctx context.Context, ownerID uint, productID uint, position string) error {
 	result := r.db.WithContext(ctx).
-		Model(&domain.Product{}).
+		Table("products").
 		Where("id = ? AND owner_id = ?", productID, ownerID).
 		Update("position", position)
-	
+
 	if result.Error != nil {
 		return apperrors.New(
 			apperrors.ErrCodeInternal,
@@ -221,7 +253,7 @@ func (r *productRepository) UpdatePosition(ctx context.Context, ownerID uint, pr
 			result.Error,
 		)
 	}
-	
+
 	if result.RowsAffected == 0 {
 		return apperrors.New(
 			apperrors.ErrCodeNotFound,
@@ -229,6 +261,6 @@ func (r *productRepository) UpdatePosition(ctx context.Context, ownerID uint, pr
 			nil,
 		)
 	}
-	
+
 	return nil
 }

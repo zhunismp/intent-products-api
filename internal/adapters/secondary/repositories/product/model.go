@@ -13,7 +13,6 @@ type ProductModel struct {
 	Link     string  `gorm:"type:text"`
 	Price    float64 `gorm:"not null;check:price >= 0"`
 	Status   string  `gorm:"type:varchar(50);not null;default:'active'"`
-	Priority int64   `gorm:"type:bigint;default:-1"`
 	Position string  `gorm:"type:text;not null"`
 }
 
