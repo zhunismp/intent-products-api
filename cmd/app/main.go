@@ -34,7 +34,8 @@ func main() {
 		cfg.GetDBTimezone(),
 	)
 	_, err = SetupTelemetry(context.Background(), cfg.GetServerName(), cfg.GetServerEnv())
-	logger, close := NewLoggerFactory(context.Background(), cfg)
+	
+	logger, close := NewLoggerFactory(cfg.GetServerEnv())
 	baseApiPrefix := cfg.GetServerBaseApiPrefix()
 
 	productDbRepo := NewProductRepository(db)

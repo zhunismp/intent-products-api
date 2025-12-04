@@ -14,7 +14,6 @@ import (
 	logger "github.com/gofiber/fiber/v3/middleware/logger"
 	recover "github.com/gofiber/fiber/v3/middleware/recover"
 	"github.com/gofiber/fiber/v3/middleware/requestid"
-	"github.com/uptrace/opentelemetry-go-extra/otelzap"
 	"github.com/zhunismp/intent-products-api/internal/adapters/primary/http/product"
 	core "github.com/zhunismp/intent-products-api/internal/core/infrastructure/config"
 	"go.uber.org/zap"
@@ -22,7 +21,7 @@ import (
 
 type HttpServer struct {
 	cfg           core.AppConfigProvider
-	log           *otelzap.Logger
+	log           *zap.Logger
 	fiberApp      *fiber.App
 	apiBaseRouter fiber.Router
 	basePath      string
@@ -36,8 +35,8 @@ func NewRouteGroup(product *product.ProductHttpHandler) *RouteGroup {
 	return &RouteGroup{product: product}
 }
 
-func NewHttpServer(cfg core.AppConfigProvider, otelLogger *otelzap.Logger, baseApiPrefix string) *HttpServer {
-	validateArguments(cfg, otelLogger, &baseApiPrefix)
+func NewHttpServer(cfg core.AppConfigProvider, zapLogger *zap.Logger, baseApiPrefix string) *HttpServer {
+	validateArguments(cfg, zapLogger, &baseApiPrefix)
 
 	app := fiber.New(fiber.Config{
 		AppName: cfg.GetServerName(),
@@ -51,7 +50,7 @@ func NewHttpServer(cfg core.AppConfigProvider, otelLogger *otelzap.Logger, baseA
 	app.Use(logger.New(logger.Config{
 		Stream: io.Discard,
 		Done: func(c fiber.Ctx, logString []byte) {
-			otelLogger.Info("http request",
+			zapLogger.Info("http request",
 				zap.String("request_id", requestid.FromContext(c)),
 				zap.String("method", c.Method()),
 				zap.String("path", c.Path()),
@@ -82,11 +81,11 @@ func NewHttpServer(cfg core.AppConfigProvider, otelLogger *otelzap.Logger, baseA
 	}))
 
 	apiGroup := app.Group(baseApiPrefix)
-	otelLogger.Info("Fiber HTTP server core initialized with middleware.", zap.String("baseApiPrefix", baseApiPrefix))
+	zapLogger.Info("Fiber HTTP server core initialized with middleware.", zap.String("baseApiPrefix", baseApiPrefix))
 
 	return &HttpServer{
 		cfg:           cfg,
-		log:           otelLogger,
+		log:           zapLogger,
 		fiberApp:      app,
 		apiBaseRouter: apiGroup,
 		basePath:      baseApiPrefix,
@@ -160,7 +159,7 @@ func (s *HttpServer) registerAPIGroup(subPrefix string, groupRegistrar func(rout
 	s.log.Info("Registered API group", zap.String("fullPrefix", fullPrefix))
 }
 
-func validateArguments(cfg core.AppConfigProvider, otelLogger *otelzap.Logger, baseApiPrefix *string) {
+func validateArguments(cfg core.AppConfigProvider, otelLogger *zap.Logger, baseApiPrefix *string) {
 	if cfg == nil {
 		log.Fatal("Server configuration is missing for HTTP server initialization")
 	}

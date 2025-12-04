@@ -5,10 +5,10 @@ import (
 
 	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v3"
-	"github.com/uptrace/opentelemetry-go-extra/otelzap"
 	dto "github.com/zhunismp/intent-products-api/internal/adapters/primary/http/shared/dto"
 	core "github.com/zhunismp/intent-products-api/internal/core/domain/product"
 	"go.opentelemetry.io/otel"
+	"go.uber.org/zap"
 )
 
 // for development purpose.
@@ -19,10 +19,10 @@ const OwnerID = 11122
 type ProductHttpHandler struct {
 	productSvc   core.ProductUsecase
 	reqValidator *validator.Validate
-	logger       *otelzap.Logger
+	logger       *zap.Logger
 }
 
-func NewProductHttpHandler(productSvc core.ProductUsecase, logger *otelzap.Logger) *ProductHttpHandler {
+func NewProductHttpHandler(productSvc core.ProductUsecase, logger *zap.Logger) *ProductHttpHandler {
 	// setup validator
 	validate := validator.New()
 	validate.RegisterValidation("date_after_opt", IsDateAfter)

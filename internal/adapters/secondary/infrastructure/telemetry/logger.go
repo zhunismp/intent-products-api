@@ -1,20 +1,10 @@
 package telemetry
 
 import (
-	"context"
-	"fmt"
 	"log"
-	"os"
 
 	"github.com/uptrace/opentelemetry-go-extra/otelzap"
-	"github.com/zhunismp/intent-products-api/internal/adapters/secondary/infrastructure/config"
-	"go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploghttp"
-	"go.opentelemetry.io/otel/log/global"
-	otelLog "go.opentelemetry.io/otel/sdk/log"
-	"go.opentelemetry.io/otel/sdk/resource"
-	semconv "go.opentelemetry.io/otel/semconv/v1.26.0"
 	"go.uber.org/zap"
-	"go.uber.org/zap/zapcore"
 )
 
 const (
@@ -22,78 +12,16 @@ const (
 	prod = "production"
 )
 
-func NewLogger(env string) (*zap.Logger, func(context.Context)) {
-	logger := zap.Must(zap.NewProduction())
-	return logger, func (ctx context.Context) { logger.Sync() }
-}
-
-func newProductionLogger(ctx context.Context, appCfg *config.AppEnvConfig) (*otelzap.Logger, func(), error) {
-
-	encCfg := zap.NewProductionEncoderConfig()
-	encCfg.TimeKey = "ts"
-	encCfg.EncodeTime = zapcore.ISO8601TimeEncoder
-
-	core := zapcore.NewCore(zapcore.NewConsoleEncoder(encCfg), zapcore.AddSync(os.Stdout), zapcore.InfoLevel)
-	zapLogger := zap.New(core, zap.AddCaller(), zap.AddStacktrace(zapcore.ErrorLevel))
-
-	res, err := resource.New(ctx,
-		resource.WithAttributes(
-			semconv.ServiceName(appCfg.GetServerName()),
-			semconv.DeploymentEnvironment(appCfg.GetServerEnv()),
-		),
-	)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to create resource: %w", err)
-	}
-
-	exporter, err := otlploghttp.New(ctx,
-		otlploghttp.WithEndpoint(appCfg.GetLogEndpoint()),
-		otlploghttp.WithURLPath(appCfg.GetLogPath()),
-		otlploghttp.WithInsecure(),
-	)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to create OTLP exporter: %w", err)
-	}
-
-	processor := otelLog.NewBatchProcessor(exporter)
-	provider := otelLog.NewLoggerProvider(
-		otelLog.WithResource(res),
-		otelLog.WithProcessor(processor),
-	)
-
-	global.SetLoggerProvider(provider)
-
-	otelLogger := otelzap.New(zapLogger,
-		otelzap.WithLoggerProvider(provider),
-		otelzap.WithMinLevel(zapcore.InfoLevel),
-	)
-
-	cleanup := func() {
-		_ = otelLogger.Sync()
-		_ = provider.Shutdown(context.Background())
-	}
-
-	return otelLogger, cleanup, nil
-}
-
-func newDevelopmentLogger() (*otelzap.Logger, func()) {
-	otelLogger := otelzap.New(zap.Must(zap.NewDevelopment()))
-	return otelLogger, func() { otelLogger.Sync() }
-}
-
-func NewLoggerFactory(ctx context.Context, appCfg *config.AppEnvConfig) (*otelzap.Logger, func()) {
-	switch appCfg.GetServerEnv() {
-	case dev:
-		return newDevelopmentLogger()
+func NewLoggerFactory(env string) (*zap.Logger, func() error) {
+	switch env {
 	case prod:
-		logger, cleanupFn, err := newProductionLogger(ctx, appCfg)
-		if err != nil {
-			log.Fatalf("ERROR: error starting otel logging - %v", err)
-		}
-		return logger, cleanupFn
+		logger := otelzap.New(zap.Must(zap.NewProduction()))
+		return logger.Logger, logger.Sync
+	case dev:
+		logger := zap.Must(zap.NewDevelopment())
+		return logger, logger.Sync
 	default:
-		log.Fatal("error mismatch env type")
-		return nil, func() {}
+		log.Fatalf("environment configuration mismatch")
+		return nil, nil
 	}
-
 }
