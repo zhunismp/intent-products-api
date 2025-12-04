@@ -82,9 +82,9 @@ func (s *productService) GetProduct(ctx context.Context, ownerID, productID uint
 	return product, nil
 }
 
-func (s *productService) GetProductByStatus(ctx context.Context, ownerID uint, status string) ([]*Product, error) {
+func (s *productService) GetAllProducts(ctx context.Context, ownerID uint, filter *Filter) ([]*Product, error) {
 
-	products, err := s.productRepo.GetProductByStatus(ctx, ownerID, status)
+	products, err := s.productRepo.FindAllProducts(ctx, ownerID, filter)
 	if err != nil {
 		return nil, err
 	}

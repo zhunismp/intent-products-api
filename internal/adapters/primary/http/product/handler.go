@@ -101,16 +101,24 @@ func (h *ProductHttpHandler) GetProduct(c fiber.Ctx) error {
 	return dto.HandleResponse(c, fiber.StatusOK, "get product successfully", product)
 }
 
-func (h *ProductHttpHandler) GetProductByStatus(c fiber.Ctx) error {
+func (h *ProductHttpHandler) GetAllProducts(c fiber.Ctx) error {
 	// tracer
 	tr := otel.Tracer("product-handler")
-	ctx, span := tr.Start(c.Context(), "GetProductByStatus")
+	ctx, span := tr.Start(c.Context(), "GetAllProducts")
 	defer span.End()
 
-	status := c.Params("status")
+	status := c.Query("status")
+	page := dto.QueryInt(c, "page", 1)
+	size := dto.QueryInt(c, "size", 20)
+
+	filter := &core.Filter{
+		Status: status,
+		Page: page,
+		Size: size,
+	}
 
 	// calling svc
-	products, err := h.productSvc.GetProductByStatus(ctx, OwnerID, status)
+	products, err := h.productSvc.GetAllProducts(ctx, OwnerID, filter)
 	if err != nil {
 		return dto.HandleError(c, err)
 	}

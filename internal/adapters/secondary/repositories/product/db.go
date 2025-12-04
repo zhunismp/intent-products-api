@@ -88,21 +88,29 @@ func (r *productRepository) GetProduct(ctx context.Context, ownerID uint, produc
 	return toDomainProduct(model), nil
 }
 
-func (r *productRepository) GetProductByStatus(ctx context.Context, ownerID uint, status string) ([]*domain.Product, error) {
-	var models []ProductModel
+func (r *productRepository) FindAllProducts(ctx context.Context, ownerID uint, filter *domain.Filter) ([]*domain.Product, error) {
+	q := r.db.WithContext(ctx).
+		Where("owner_id = ?", ownerID).
+		Order("position")
 
-	err := r.db.WithContext(ctx).
-		Where("owner_id = ? AND status = ?", ownerID, status).
-		Order("position COLLATE \"C\" ASC"). // binary sorting
-		Find(&models).Error
-
-	if errors.Is(err, gorm.ErrRecordNotFound) {
-		return nil, apperrors.New(
-			apperrors.ErrCodeNotFound,
-			fmt.Sprintf("no products found for owner %d with status %s", ownerID, status),
-			err,
-		)
+	// TODO: extract logic away from here
+	if filter.Status != "" {
+		q = q.Where("status = ?", filter.Status)
 	}
+
+	offset := (filter.Page - 1) * filter.Size
+	q = q.Offset(offset).Limit(filter.Size)
+
+	var models []ProductModel
+	err := q.Find(&models).Error
+
+	// if errors.Is(err, gorm.ErrRecordNotFound) {
+	// 	return nil, apperrors.New(
+	// 		apperrors.ErrCodeNotFound,
+	// 		fmt.Sprintf("no products found for owner %d", ownerID),
+	// 		err,
+	// 	)
+	// }
 
 	if err != nil {
 		return nil, apperrors.New(
