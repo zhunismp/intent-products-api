@@ -91,9 +91,9 @@ func newLoggerProvider(
 		return nil, err
 	}
 
-	processor := log.NewBatchProcessor(exporter)
+	p := log.NewBatchProcessor(exporter)
 	provider := log.NewLoggerProvider(
-		log.WithProcessor(processor),
+		log.WithProcessor(p),
 		log.WithResource(res),
 	)
 	return provider, nil

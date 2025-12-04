@@ -2,26 +2,51 @@ package telemetry
 
 import (
 	"log"
+	"log/slog"
+	"os"
 
-	"github.com/uptrace/opentelemetry-go-extra/otelzap"
-	"go.uber.org/zap"
+	slogmulti "github.com/samber/slog-multi"
+	slogctx "github.com/veqryn/slog-context"
+	"go.opentelemetry.io/contrib/bridges/otelslog"
 )
 
 const (
-	dev  = "development"
-	prod = "production"
+	development = "development"
+	production  = "production"
 )
 
-func NewLoggerFactory(env string) (*zap.Logger, func() error) {
+func NewProductionLogger(appName string) *slog.Logger {
+	stdoutHandler := slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+		AddSource: true,
+		Level:     slog.LevelInfo,
+	})
+	otelHandler := otelslog.NewHandler(appName, otelslog.WithSource(true))
+	fanoutHandler := slogmulti.Fanout(stdoutHandler, otelHandler)
+	ctxHandler := slogctx.NewHandler(fanoutHandler, nil)
+	logger := slog.New(ctxHandler)
+	return logger
+}
+
+func NewDevelopmentLogger(appName string) *slog.Logger {
+	stdoutHandler := slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+		AddSource: true,
+		Level:     slog.LevelDebug,
+	})
+	otelHandler := otelslog.NewHandler(appName, otelslog.WithSource(true))
+	fanoutHandler := slogmulti.Fanout(stdoutHandler, otelHandler)
+	ctxHandler := slogctx.NewHandler(fanoutHandler, nil)
+	logger := slog.New(ctxHandler)
+	return logger
+}
+
+func GetLogger(env, appName string) *slog.Logger {
 	switch env {
-	case prod:
-		logger := otelzap.New(zap.Must(zap.NewProduction()))
-		return logger.Logger, logger.Sync
-	case dev:
-		logger := zap.Must(zap.NewDevelopment())
-		return logger, logger.Sync
+	case development:
+		return NewDevelopmentLogger(appName)
+	case production:
+		return NewProductionLogger(appName)
 	default:
-		log.Fatalf("environment configuration mismatch")
-		return nil, nil
+		log.Fatalf("wrong environment was set. application can not proceed")
+		return nil
 	}
 }

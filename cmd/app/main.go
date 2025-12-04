@@ -35,7 +35,7 @@ func main() {
 	)
 	_, err = SetupTelemetry(context.Background(), cfg.GetServerName(), cfg.GetServerEnv())
 	
-	logger, close := NewLoggerFactory(cfg.GetServerEnv())
+	logger := GetLogger(cfg.GetServerEnv(), cfg.GetServerEnv())
 	baseApiPrefix := cfg.GetServerBaseApiPrefix()
 
 	productDbRepo := NewProductRepository(db)
@@ -58,6 +58,5 @@ func main() {
 
 	logger.Info(fmt.Sprintf("Received shutdown signal %s", sig.String()))
 	httpServer.GracefulShutdown()
-	close()
 	logger.Info("Cleanup finished. Exiting...")
 }

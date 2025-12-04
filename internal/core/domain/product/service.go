@@ -2,23 +2,23 @@ package product
 
 import (
 	"context"
+	"log/slog"
 
 	"github.com/zhunismp/intent-products-api/internal/core/domain/cause"
 	"github.com/zhunismp/intent-products-api/internal/core/domain/shared/utils/ordering"
 	"go.opentelemetry.io/otel"
-	"go.uber.org/zap"
 )
 
 type productService struct {
 	productRepo ProductRepository
 	causeSvc    cause.CauseUsecase
-	logger      *zap.Logger
+	logger      *slog.Logger
 }
 
 func NewProductService(
 	productRepo ProductRepository,
 	causeSvc cause.CauseUsecase,
-	logger *zap.Logger,
+	logger *slog.Logger,
 ) ProductUsecase {
 	return &productService{
 		productRepo: productRepo,
@@ -51,28 +51,14 @@ func (s *productService) CreateProduct(
 
 	productID, err := s.productRepo.CreateProduct(ctx, product)
 	if err != nil {
-		s.logger.Info("failed to create product in repository",
-			zap.Uint("owner_id", ownerID),
-			zap.String("title", title),
-			zap.Error(err),
-		)
 		return err
 	}
 
 	if err := s.causeSvc.BulkCreateCauses(ctx, productID, reasons); err != nil {
-		s.logger.Info("failed to create causes for product",
-			zap.Uint("product_id", productID),
-			zap.Int("causes_count", len(reasons)),
-			zap.Error(err),
-		)
 		return err
 	}
 
-	s.logger.Info("product created successfully",
-		zap.Uint("product_id", productID),
-		zap.Uint("owner_id", ownerID),
-		zap.Int("causes_count", len(reasons)),
-	)
+	s.logger.Info("product created successfully")
 
 	return nil
 }
@@ -81,29 +67,17 @@ func (s *productService) GetProduct(ctx context.Context, ownerID, productID uint
 
 	product, err := s.productRepo.GetProduct(ctx, ownerID, productID)
 	if err != nil {
-		s.logger.Info("failed to get product",
-			zap.Uint("owner_id", ownerID),
-			zap.Uint("product_id", productID),
-			zap.Error(err),
-		)
 		return nil, err
 	}
 
 	causes, err := s.causeSvc.GetCauses(ctx, product.ID)
 	if err != nil {
-		s.logger.Info("failed to get causes for product",
-			zap.Uint("product_id", product.ID),
-			zap.Error(err),
-		)
 		return nil, err
 	}
 
 	product.Causes = causes
 
-	s.logger.Info("product fetched successfully",
-		zap.Uint("product_id", product.ID),
-		zap.Int("causes_count", len(causes)),
-	)
+	s.logger.Info("product fetched successfully")
 
 	return product, nil
 }
@@ -112,19 +86,10 @@ func (s *productService) GetProductByStatus(ctx context.Context, ownerID uint, s
 
 	products, err := s.productRepo.GetProductByStatus(ctx, ownerID, status)
 	if err != nil {
-		s.logger.Info("failed to get products by status",
-			zap.Uint("owner_id", ownerID),
-			zap.String("status", string(status)),
-			zap.Error(err),
-		)
 		return nil, err
 	}
 
-	s.logger.Info("products fetched by status",
-		zap.Uint("owner_id", ownerID),
-		zap.String("status", string(status)),
-		zap.Int("count", len(products)),
-	)
+	s.logger.Info("products fetched by status")
 
 	return products, nil
 }
@@ -173,26 +138,14 @@ func (s *productService) Move(ctx context.Context, ownerID uint, productID uint,
 func (s *productService) DeleteProduct(ctx context.Context, ownerID, productID uint) error {
 
 	if err := s.productRepo.DeleteProduct(ctx, ownerID, productID); err != nil {
-		s.logger.Info("failed to delete product from repository",
-			zap.Uint("owner_id", ownerID),
-			zap.Uint("product_id", productID),
-			zap.Error(err),
-		)
 		return err
 	}
 
 	if err := s.causeSvc.DeleteCauses(ctx, productID); err != nil {
-		s.logger.Info("failed to delete causes for product",
-			zap.Uint("product_id", productID),
-			zap.Error(err),
-		)
 		return err
 	}
 
-	s.logger.Info("product deleted successfully",
-		zap.Uint("owner_id", ownerID),
-		zap.Uint("product_id", productID),
-	)
+	s.logger.Info("product deleted successfully")
 
 	return nil
 }
