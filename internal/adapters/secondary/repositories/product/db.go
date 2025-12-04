@@ -21,23 +21,9 @@ func NewProductRepository(db *gorm.DB) domain.ProductRepository {
 
 func (r *productRepository) CreateProduct(ctx context.Context, product *domain.Product) (uint, error) {
 	// Get the last position to append the new product at the end
-	var lastPosition string
-	err := r.db.WithContext(ctx).
-		Table("products").
-		Select("position").
-		Where("owner_id = ?", product.OwnerID).
-		Order("position COLLATE \"C\" DESC").
-		Limit(1).
-		Pluck("position", &lastPosition).
-		Error
-
-	// Ignore record not found as it's first product
-	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
-		return 0, apperrors.New(
-			apperrors.ErrCodeInternal,
-			"failed to get last position",
-			err,
-		)
+	lastPosition, err := r.GetLastPosition(ctx, product.OwnerID)
+	if err != nil {
+		return 0, err
 	}
 
 	// Generate new position after the last item
@@ -104,14 +90,6 @@ func (r *productRepository) FindAllProducts(ctx context.Context, ownerID uint, f
 	var models []ProductModel
 	err := q.Find(&models).Error
 
-	// if errors.Is(err, gorm.ErrRecordNotFound) {
-	// 	return nil, apperrors.New(
-	// 		apperrors.ErrCodeNotFound,
-	// 		fmt.Sprintf("no products found for owner %d", ownerID),
-	// 		err,
-	// 	)
-	// }
-
 	if err != nil {
 		return nil, apperrors.New(
 			apperrors.ErrCodeInternal,
@@ -153,7 +131,7 @@ func (r *productRepository) GetFirstPosition(ctx context.Context, ownerID uint) 
 		Table("products").
 		Select("position").
 		Where("owner_id = ?", ownerID).
-		Order("position COLLATE \"C\" ASC").
+		Order("position").
 		Limit(1).
 		Pluck("position", &position).
 		Error
@@ -178,6 +156,29 @@ func (r *productRepository) GetFirstPosition(ctx context.Context, ownerID uint) 
 			apperrors.ErrCodeNotFound,
 			fmt.Sprintf("no products found for owner id %d", ownerID),
 			nil,
+		)
+	}
+
+	return position, nil
+}
+
+func (r *productRepository) GetLastPosition(ctx context.Context, ownerID uint) (string, error) {
+	var position string
+	err := r.db.WithContext(ctx).
+		Table("products").
+		Select("position").
+		Where("owner_id = ?", ownerID).
+		Order("position DESC").
+		Limit(1).
+		Pluck("position", &position).
+		Error
+
+	// Ignore record not found as it's first product
+	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+		return "", apperrors.New(
+			apperrors.ErrCodeInternal,
+			"failed to get last position",
+			err,
 		)
 	}
 

@@ -13,7 +13,7 @@ type ProductModel struct {
 	Link     string  `gorm:"type:text"`
 	Price    float64 `gorm:"not null;check:price >= 0"`
 	Status   string  `gorm:"type:varchar(50);not null;default:'active'"`
-	Position string  `gorm:"type:text;not null"`
+	Position string  `gorm:"type:varchar(255) COLLATE \"C\";not null"` // ensure binary order
 }
 
 func (ProductModel) TableName() string {

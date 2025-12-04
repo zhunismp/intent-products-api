@@ -19,6 +19,7 @@ type ProductRepository interface {
 	DeleteProduct(ctx context.Context, ownerID uint, productID uint) error
 
 	GetFirstPosition(ctx context.Context, ownerID uint) (string, error)
+	GetLastPosition(ctx context.Context, ownerID uint) (string, error)
 	GetPositionByProductID(ctx context.Context, ownerID uint, productID uint) (string, error)
 	GetNextPosition(ctx context.Context, ownerID uint, position string) (string, error)
 	UpdatePosition(ctx context.Context, ownerID uint, productID uint, position string) error
