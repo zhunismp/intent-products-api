@@ -3,27 +3,19 @@ package cause
 import (
 	"context"
 	"fmt"
-
-	"go.uber.org/zap"
+	"log/slog"
 )
 
 type causeService struct {
 	causeRepo CauseRepository
-	logger    *zap.Logger
+	logger    *slog.Logger
 }
 
-func NewCauseService(causeRepo CauseRepository, logger *zap.Logger) CauseUsecase {
-	return &causeService{
-		causeRepo: causeRepo,
-		logger:    logger,
-	}
+func NewCauseService(causeRepo CauseRepository, logger *slog.Logger) CauseUsecase {
+	return &causeService{causeRepo: causeRepo, logger: logger}
 }
 
 func (s *causeService) BulkCreateCauses(ctx context.Context, productID uint, reasons []string) error {
-	log := s.logger.With(
-		zap.Uint("product_id", productID),
-	)
-
 	causes := make([]*Cause, 0, len(reasons))
 	for _, reason := range reasons {
 		causes = append(causes, &Cause{
@@ -33,35 +25,45 @@ func (s *causeService) BulkCreateCauses(ctx context.Context, productID uint, rea
 	}
 
 	if err := s.causeRepo.BulkSaveCauses(ctx, productID, causes); err != nil {
-		log.Error("failed to bulk save causes", zap.Error(err))
 		return fmt.Errorf("failed to bulk save causes for product %d: %w", productID, err)
 	}
 
-	log.Info("bulk created causes successfully")
+	s.logger.InfoContext(ctx, "bulk created causes successfully",
+		slog.Uint64("product_id", uint64(productID)),
+		slog.Group("cause_info",
+			slog.Any("reasons", reasons),
+			slog.Int("reason_count", len(reasons)),
+		),
+	)
+
 	return nil
 }
 
 func (s *causeService) GetCauses(ctx context.Context, productID uint) ([]*Cause, error) {
-	log := s.logger.With(zap.Uint("product_id", productID))
 
 	causes, err := s.causeRepo.FindByProductID(ctx, productID)
 	if err != nil {
-		log.Error("failed to fetch causes", zap.Error(err))
 		return nil, fmt.Errorf("failed to get causes for product %d: %w", productID, err)
 	}
 
-	log.Info("fetched causes successfully", zap.Int("count", len(causes)))
+	s.logger.InfoContext(ctx, "fetched causes successfully", 
+		slog.Uint64("product_id", uint64(productID)),
+		slog.Group("cause_info",
+			slog.Int("cause_count", len(causes)),
+		),
+	)
+	
 	return causes, nil
 }
 
 func (s *causeService) DeleteCauses(ctx context.Context, productID uint) error {
-	log := s.logger.With(zap.Uint("product_id", productID))
-
 	if err := s.causeRepo.DeleteByProductID(ctx, productID); err != nil {
-		log.Error("failed to delete causes", zap.Error(err))
 		return fmt.Errorf("failed to delete causes for product %d: %w", productID, err)
 	}
 
-	log.Info("deleted causes successfully")
+	s.logger.InfoContext(ctx, "deleted causes successfully",
+		slog.Uint64("product_id", uint64(productID)),
+	)
+
 	return nil
 }

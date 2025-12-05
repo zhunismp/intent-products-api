@@ -6,17 +6,15 @@ import (
 
 	domain "github.com/zhunismp/intent-products-api/internal/core/domain/cause"
 	"github.com/zhunismp/intent-products-api/internal/core/domain/shared/apperrors"
-	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
 
 type causeRepository struct {
-	db     *gorm.DB
-	logger *zap.Logger
+	db *gorm.DB
 }
 
-func NewCauseRepository(db *gorm.DB, logger *zap.Logger) domain.CauseRepository {
-	return &causeRepository{db: db, logger: logger}
+func NewCauseRepository(db *gorm.DB) domain.CauseRepository {
+	return &causeRepository{db: db}
 }
 
 func (r *causeRepository) BulkSaveCauses(ctx context.Context, productID uint, causes []*domain.Cause) error {

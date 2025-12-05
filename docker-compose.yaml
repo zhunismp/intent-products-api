@@ -10,7 +10,7 @@ services:
       POSTGRES_PASSWORD: secret
       POSTGRES_DB: intent_products_postgres_dev
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - postgres-data:/var/lib/postgresql/data
   
   pgadmin:
     image: dpage/pgadmin4:6.21
@@ -23,6 +23,16 @@ services:
     depends_on:
       - postgres
     restart: unless-stopped
+  
+  otel-lgtm:
+    image: grafana/otel-lgtm
+    container_name: otel-lgtm
+    ports:
+      - "3000:3000"
+      - "4318:4318"
+    depends_on:
+      - postgres
+    restart: unless-stopped
 
 volumes:
-  postgres_data:
+  postgres-data:

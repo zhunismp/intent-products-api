@@ -9,11 +9,11 @@ type ProductModel struct {
 	gorm.Model
 	OwnerID  uint    `gorm:"type:bigint;not null"`
 	Name     string  `gorm:"type:varchar(255);not null"`
-	ImageURL *string `gorm:"type:text"`
-	Link     *string `gorm:"type:text"`
+	ImageURL string  `gorm:"type:text"`
+	Link     string  `gorm:"type:text"`
 	Price    float64 `gorm:"not null;check:price >= 0"`
 	Status   string  `gorm:"type:varchar(50);not null;default:'active'"`
-	Priority int64   `gorm:"type:bigint;default:-1"`
+	Position string  `gorm:"type:varchar(255) COLLATE \"C\";not null"` // ensure binary order
 }
 
 func (ProductModel) TableName() string {
@@ -29,7 +29,7 @@ func toProductModel(d *domain.Product) ProductModel {
 		Link:     d.Link,
 		Price:    d.Price,
 		Status:   d.Status,
-		Priority: d.Priority,
+		Position: d.Position,
 	}
 }
 
@@ -42,7 +42,7 @@ func toDomainProduct(m ProductModel) *domain.Product {
 		Link:      m.Link,
 		Price:     m.Price,
 		Status:    m.Status,
-		Priority:  m.Priority,
+		Position:  m.Position,
 		CreatedAt: m.CreatedAt,
 		UpdatedAt: m.UpdatedAt,
 	}
