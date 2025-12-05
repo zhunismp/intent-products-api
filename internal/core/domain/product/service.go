@@ -176,3 +176,15 @@ func (s *productService) DeleteProduct(ctx context.Context, ownerID, productID u
 
 	return nil
 }
+
+func (s *productService) AddCauses(ctx context.Context, ownerID, productID uint, reasons []string) error {
+	if err := s.productRepo.ValidateOwnership(ctx, ownerID, productID); err != nil {
+		return err
+	}
+
+	if err := s.causeSvc.BulkCreateCauses(ctx, productID, reasons); err != nil {
+		return err
+	}
+
+	return nil
+}
