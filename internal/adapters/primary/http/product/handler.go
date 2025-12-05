@@ -188,6 +188,40 @@ func (h *ProductHttpHandler) DeleteProduct(c fiber.Ctx) error {
 	return dto.HandleResponse(c, fiber.StatusOK, "product was deleted", id)
 }
 
+func (h *ProductHttpHandler) CreateCauses(c fiber.Ctx) error {
+	ownerID, err := getUserId(c)
+	if err != nil {
+		return err
+	}
+
+	req := new(CreateCausesRequest)
+
+	// parse request body
+	if err := c.Bind().Body(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{ErrorMessage: "can not parse request body"})
+	}
+
+	// validate req
+	if err := h.reqValidator.Struct(req); err != nil {
+		if errs, ok := err.(validator.ValidationErrors); ok {
+			errMap := GenerateErrorMap(errs)
+			return c.Status(fiber.StatusBadRequest).JSON(dto.ValidationErrorResponse{
+				ErrorMessage: "invalid request",
+				ErrorFields:  errMap,
+			})
+		}
+
+		return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{ErrorMessage: "something went wrong"})
+	}
+
+	// calling svc
+	if err := h.productSvc.AddCauses(c.Context(), ownerID, uint(req.ProductID), req.Reasons); err != nil {
+		return dto.HandleError(c, err)
+	}
+
+	return dto.HandleResponse(c, fiber.StatusOK, "causes was added successfully", nil)
+}
+
 func getUserId(c fiber.Ctx) (uint, error) {
 	ownerID, err := strconv.ParseUint(c.Get("X-User-Id"), 10, 64)
 	if err != nil || ownerID <= 0 {

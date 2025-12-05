@@ -17,3 +17,8 @@ type GetAllProductsRequest struct {
 	Page   int    `query:"page" validate:"omitempty,min=1"`
 	Size   int    `query:"size" validate:"omitempty,min=1"`
 }
+
+type CreateCausesRequest struct {
+	ProductID int `json:"productId" validate:"required,min=1"`
+	Reasons []string `json:"reasons" validate:"required,min=1"`
+}

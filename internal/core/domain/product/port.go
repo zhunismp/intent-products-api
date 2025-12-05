@@ -10,6 +10,8 @@ type ProductUsecase interface {
 	GetAllProducts(ctx context.Context, ownerID uint, filter *Filter) ([]*Product, error)
 	Move(ctx context.Context, ownerID uint, productID uint, productAfterID *uint) error
 	DeleteProduct(ctx context.Context, ownerID uint, productID uint) error
+
+	AddCauses(ctx context.Context, ownerID uint, productID uint, reasons []string) error
 }
 
 type ProductRepository interface {
@@ -23,4 +25,6 @@ type ProductRepository interface {
 	GetPositionByProductID(ctx context.Context, ownerID uint, productID uint) (string, error)
 	GetNextPosition(ctx context.Context, ownerID uint, position string) (string, error)
 	UpdatePosition(ctx context.Context, ownerID uint, productID uint, position string) error
+
+	ValidateOwnership(ctx context.Context, ownerID uint, productID uint) error
 }

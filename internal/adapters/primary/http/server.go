@@ -106,6 +106,8 @@ func (s *HttpServer) SetupRoute(routeGroup *RouteGroup) {
 		router.Post("/", productHandler.CreateProduct)
 		router.Put("/positions", productHandler.MoveProductPosition)
 		router.Delete("/:id", productHandler.DeleteProduct)
+
+		router.Post("/causes", productHandler.CreateCauses)
 	})
 }
 

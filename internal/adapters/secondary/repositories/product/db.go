@@ -273,3 +273,30 @@ func (r *productRepository) UpdatePosition(ctx context.Context, ownerID uint, pr
 
 	return nil
 }
+
+func (r *productRepository) ValidateOwnership(ctx context.Context, ownerID, productID uint) error {
+	var count int64
+	err := r.db.WithContext(ctx).
+		Table("products").
+		Where("id = ? AND owner_id = ?", productID, ownerID).
+		Count(&count).
+		Error
+
+	if err != nil {
+		return apperrors.New(
+			apperrors.ErrCodeInternal,
+			"failed to validate ownership",
+			err,
+		)
+	}
+
+	if count == 0 {
+		return apperrors.New(
+			apperrors.ErrCodeNotFound,
+			fmt.Sprintf("product id %d not found for owner id %d", productID, ownerID),
+			nil,
+		)
+	}
+
+	return nil
+}
