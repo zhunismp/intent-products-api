@@ -59,7 +59,6 @@ func SetupTelemetry(
 		handleErr(err)
 		return shutdown, err
 	}
-
 	shutdownFuncs = append(shutdownFuncs, logProvider.Shutdown)
 	global.SetLoggerProvider(logProvider)
 

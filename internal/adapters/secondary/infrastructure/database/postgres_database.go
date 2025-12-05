@@ -1,8 +1,10 @@
 package database
 
 import (
+	"context"
 	"fmt"
 	"log"
+	"log/slog"
 	"os"
 	"time"
 
@@ -15,61 +17,72 @@ import (
 )
 
 // TODO: update gorm to v2
-func NewPostgresDatabase(host, user, password, dbname, port, sslmode, TimeZone string) *gorm.DB {
-	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=%s TimeZone=%s",
-		host,
-		user,
-		password,
-		dbname,
-		port,
-		sslmode,
-		TimeZone,
+func NewPostgresDatabase(
+	host, user, password, dbname, port, sslmode, timezone string,
+) (*gorm.DB, func(ctx context.Context) error, error) {
+
+	dsn := fmt.Sprintf(
+		"host=%s user=%s password=%s dbname=%s port=%s sslmode=%s TimeZone=%s",
+		host, user, password, dbname, port, sslmode, timezone,
 	)
 
-	logger := logger.New(
-		log.New(os.Stdout, "\r\n", log.LstdFlags), // io writer
+	slog.Info("connecting to postgresql")
+
+	gormLogger := logger.New(
+		log.New(os.Stdout, "\r\n", log.LstdFlags),
 		logger.Config{
-			SlowThreshold: time.Second,  // Slow SQL threshold
-			LogLevel:      logger.Error, // Log level
-			Colorful:      true,         // Disable color
+			SlowThreshold: time.Second,
+			LogLevel:      logger.Warn,
+			Colorful:      true,
 		},
 	)
 
 	gormConfig := &gorm.Config{
-		Logger:                                   logger,
+		Logger:                                   gormLogger,
 		DisableForeignKeyConstraintWhenMigrating: false,
 	}
 
 	gormDB, err := gorm.Open(postgres.Open(dsn), gormConfig)
 	if err != nil {
-		log.Fatalf("FATAL: Failed to connect to database during init: %v. DSN (sensitive parts might be shown): %s", err, dsn)
+		return nil, func(ctx context.Context) error { return nil }, fmt.Errorf("open DB: %w", err)
 	}
 
 	if err := gormDB.Use(tracing.NewPlugin(tracing.WithoutMetrics())); err != nil {
-		log.Fatal("FATAL: Failed to apply tracing plugin")
+		return nil, func(ctx context.Context) error { return nil }, fmt.Errorf("otel plugin: %w", err)
 	}
 
 	sqlDB, err := gormDB.DB()
 	if err != nil {
-		log.Fatalf("FATAL: Failed to get underlying sql.DB from GORM during init: %v", err)
+		return nil, func(ctx context.Context) error { return nil }, fmt.Errorf("sql.DB: %w", err)
 	}
 
-	err = sqlDB.Ping()
-	if err != nil {
-		log.Fatalf("FATAL: Failed to ping database during init: %v", err)
+	if err := sqlDB.Ping(); err != nil {
+		return nil, func(ctx context.Context) error { return sqlDB.Close() }, fmt.Errorf("ping: %w", err)
 	}
 
-	log.Println("INFO: Database connection established successfully during init.")
+	slog.Info("database connection established.")
 
-	// Auto migrate
-	err = gormDB.AutoMigrate(
+	if err := gormDB.AutoMigrate(
 		&ProductModel{},
 		&CauseModel{},
-	)
-
-	if err != nil {
-		log.Fatalf("FATAL: Failed to auto migrate database: %v", err)
+	); err != nil {
+		return nil, func(ctx context.Context) error { return sqlDB.Close() }, fmt.Errorf("auto-migrate: %w", err)
 	}
 
-	return gormDB
+	shutdownFn := func(ctx context.Context) error {
+		done := make(chan error, 1)
+
+		go func() {
+			done <- sqlDB.Close()
+		}()
+
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case err := <-done:
+			return err
+		}
+	}
+
+	return gormDB, shutdownFn, nil
 }
