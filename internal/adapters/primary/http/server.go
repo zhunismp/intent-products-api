@@ -58,13 +58,13 @@ func NewHttpServer(cfg core.AppConfigProvider, slogLogger *slog.Logger, baseApiP
 		LimiterMiddleware: limiter.SlidingWindow{},
 		LimitReached: func(c fiber.Ctx) error {
 			return c.Status(fiber.StatusTooManyRequests).JSON(fiber.Map{
-				"errorMessage": "Too many requests, please try again later.",
+				"errorMessage": "too many requests, please try again later.",
 			})
 		},
 	}))
 
 	apiGroup := app.Group(baseApiPrefix)
-	slogLogger.Info("Fiber HTTP server core initialized with middleware.", slog.String("baseApiPrefix", baseApiPrefix))
+	slogLogger.Info("fiber HTTP server core initialized with middleware.", slog.String("baseApiPrefix", baseApiPrefix))
 
 	return &HttpServer{
 		cfg:           cfg,
@@ -77,11 +77,11 @@ func NewHttpServer(cfg core.AppConfigProvider, slogLogger *slog.Logger, baseApiP
 
 func (s *HttpServer) Start() {
 	serverAddr := fmt.Sprintf("%s:%s", s.cfg.GetServerHost(), s.cfg.GetServerPort())
-	s.log.Info("Attempting to start HTTP server...", slog.String("address", serverAddr))
+	s.log.Info("attempting to start HTTP server...", slog.String("address", serverAddr))
 
 	go func() {
 		if err := s.fiberApp.Listen(serverAddr); err != nil && err.Error() != "http: Server closed" {
-			s.log.Error("Failed to start HTTP server listener")
+			s.log.Error("failed to start HTTP server listener")
 		}
 	}()
 
@@ -90,7 +90,7 @@ func (s *HttpServer) Start() {
 
 func (s *HttpServer) SetupRoute(routeGroup *RouteGroup) {
 	if routeGroup.product == nil {
-		s.log.Error("Failed to set up route")
+		s.log.Error("failed to set up route")
 	}
 
 	productHandler := routeGroup.product
@@ -109,19 +109,16 @@ func (s *HttpServer) SetupRoute(routeGroup *RouteGroup) {
 	})
 }
 
-func (s *HttpServer) GracefulShutdown() {
-	s.log.Info("Gracefully shutting down HTTP server...")
+func (s *HttpServer) GracefulShutdown(ctx context.Context) error {
+	s.log.Info("gracefully shutting down HTTP server...")
 
-	shutdownCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
-	defer cancel()
-
-	if err := s.fiberApp.ShutdownWithContext(shutdownCtx); err != nil {
-		s.log.Error("Error during server shutdown")
+	if err := s.fiberApp.ShutdownWithContext(ctx); err != nil {
+		s.log.Error("error during server shutdown")
+		return err
 	} else {
 		s.log.Info("HTTP server shutdown gracefully.")
+		return nil
 	}
-
-	s.log.Info("Cleanup finished. Exiting.")
 }
 
 func (s *HttpServer) registerAPIGroup(subPrefix string, groupRegistrar func(router fiber.Router)) {
@@ -139,22 +136,22 @@ func (s *HttpServer) registerAPIGroup(subPrefix string, groupRegistrar func(rout
 
 	group := s.apiBaseRouter.Group(subPrefix)
 	groupRegistrar(group)
-	s.log.Info("Registered API group", slog.String("fullPrefix", fullPrefix))
+	s.log.Info("registered API group", slog.String("fullPrefix", fullPrefix))
 }
 
-func validateArguments(cfg core.AppConfigProvider, otelLogger *slog.Logger, baseApiPrefix *string) {
+func validateArguments(cfg core.AppConfigProvider, logger *slog.Logger, baseApiPrefix *string) {
 	if cfg == nil {
-		log.Fatal("Server configuration is missing for HTTP server initialization")
+		log.Fatal("server configuration is missing for HTTP server initialization")
 	}
-	if otelLogger == nil {
-		log.Fatal("Logger instance is missing for HTTP server initialization")
+	if logger == nil {
+		log.Fatal("logger instance is missing for HTTP server initialization")
 	}
 	if baseApiPrefix != nil {
 		if *baseApiPrefix == "" {
-			otelLogger.Warn("baseApiPrefix is empty, API routes will be registered at the root.")
+			logger.Warn("baseApiPrefix is empty, API routes will be registered at the root.")
 		} else if !strings.HasPrefix(*baseApiPrefix, "/") {
 			*baseApiPrefix = "/" + *baseApiPrefix
-			otelLogger.Warn("baseApiPrefix did not start with '/', prepended it.", slog.String("newPrefix", *baseApiPrefix))
+			logger.Warn("baseApiPrefix did not start with '/', prepended it.", slog.String("newPrefix", *baseApiPrefix))
 		}
 	}
 }

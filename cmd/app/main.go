@@ -2,15 +2,16 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	. "github.com/zhunismp/intent-products-api/internal/adapters/primary/http"
 	. "github.com/zhunismp/intent-products-api/internal/adapters/primary/http/product"
 	. "github.com/zhunismp/intent-products-api/internal/adapters/secondary/infrastructure/config"
 	. "github.com/zhunismp/intent-products-api/internal/adapters/secondary/infrastructure/database"
+	. "github.com/zhunismp/intent-products-api/internal/adapters/secondary/infrastructure/shutdown"
 	. "github.com/zhunismp/intent-products-api/internal/adapters/secondary/infrastructure/telemetry"
 	. "github.com/zhunismp/intent-products-api/internal/adapters/secondary/repositories/cause"
 	. "github.com/zhunismp/intent-products-api/internal/adapters/secondary/repositories/product"
@@ -23,8 +24,19 @@ func main() {
 	if err != nil {
 		panic(err.Error())
 	}
+	logger := GetLogger(cfg.GetServerEnv(), cfg.GetServerName())
+	sm := NewShutdownManager(20*time.Second, logger)
 
-	db := NewPostgresDatabase(
+	otelShutdownFn, err := SetupTelemetry(context.Background(), cfg.GetServerName(), cfg.GetServerEnv())
+	if err != nil {
+		sm.Shutdown()
+	}
+	sm.Register(&ShutdownFunction{
+		ResourceName: "opentelemetry",
+		Fn:           otelShutdownFn,
+	})
+
+	db, dbShutdownFn, err := NewPostgresDatabase(
 		cfg.GetDBHost(),
 		cfg.GetDBUser(),
 		cfg.GetDBPassword(),
@@ -33,9 +45,14 @@ func main() {
 		cfg.GetDBSSLMode(),
 		cfg.GetDBTimezone(),
 	)
-	_, err = SetupTelemetry(context.Background(), cfg.GetServerName(), cfg.GetServerEnv())
-	
-	logger := GetLogger(cfg.GetServerEnv(), cfg.GetServerName())
+	if err != nil {
+		sm.Shutdown()
+	}
+	sm.Register(&ShutdownFunction{
+		ResourceName: "database",
+		Fn:           dbShutdownFn,
+	})
+
 	baseApiPrefix := cfg.GetServerBaseApiPrefix()
 
 	productDbRepo := NewProductRepository(db)
@@ -50,13 +67,21 @@ func main() {
 	httpServer := NewHttpServer(cfg, logger, baseApiPrefix)
 	httpServer.SetupRoute(routeGroup)
 	httpServer.Start()
+	sm.Register(&ShutdownFunction{
+		ResourceName: "http server",
+		Fn:           httpServer.GracefulShutdown,
+	})
 
+	gracefulShutdown(sm)
+}
+
+func gracefulShutdown(sm ShutdownManager) {
 	quit := make(chan os.Signal, 1)
+
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	defer signal.Stop(quit)
 
-	sig := <-quit
+	<-quit
 
-	logger.Info(fmt.Sprintf("Received shutdown signal %s", sig.String()))
-	httpServer.GracefulShutdown()
-	logger.Info("Cleanup finished. Exiting...")
+	sm.Shutdown()
 }
