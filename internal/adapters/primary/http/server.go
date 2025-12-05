@@ -3,7 +3,6 @@ package http
 import (
 	"context"
 	"fmt"
-	"io"
 	"log"
 	"log/slog"
 	"strings"
@@ -12,7 +11,6 @@ import (
 	fiber "github.com/gofiber/fiber/v3"
 	cors "github.com/gofiber/fiber/v3/middleware/cors"
 	limiter "github.com/gofiber/fiber/v3/middleware/limiter"
-	logger "github.com/gofiber/fiber/v3/middleware/logger"
 	recover "github.com/gofiber/fiber/v3/middleware/recover"
 	"github.com/zhunismp/intent-products-api/internal/adapters/primary/http/middleware"
 	"github.com/zhunismp/intent-products-api/internal/adapters/primary/http/product"
@@ -43,24 +41,9 @@ func NewHttpServer(cfg core.AppConfigProvider, slogLogger *slog.Logger, baseApiP
 	})
 
 	app.Use(recover.New())
-
 	app.Use(middleware.RequestIDMiddleware())
-
 	app.Use(middleware.TraceMiddleware())
-
-	app.Use(logger.New(logger.Config{
-		Stream: io.Discard,
-		Done: func(c fiber.Ctx, logString []byte) {
-			slogLogger.Info("http request",
-				// slog.String("request_id", requestid.FromContext(c)),
-				slog.String("method", c.Method()),
-				slog.String("path", c.Path()),
-				slog.Int("status", c.Response().StatusCode()),
-				slog.String("ip", c.IP()),
-			)
-		},
-	}))
-
+	app.Use(middleware.AccessLogMiddleware(slogLogger))
 	app.Use(cors.New(cors.Config{
 		AllowOrigins:     []string{"*"},
 		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"},
@@ -69,7 +52,6 @@ func NewHttpServer(cfg core.AppConfigProvider, slogLogger *slog.Logger, baseApiP
 		AllowCredentials: false,
 		MaxAge:           300,
 	}))
-
 	app.Use(limiter.New(limiter.Config{
 		Max:               100,
 		Expiration:        60 * time.Second,

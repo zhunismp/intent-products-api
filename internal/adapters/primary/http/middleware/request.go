@@ -15,6 +15,7 @@ func RequestIDMiddleware() fiber.Handler {
 			"request_id", reqID,
 		)
 
+		c.Locals("request_id", reqID)
 		c.SetContext(ctx)
 
 		return c.Next()
