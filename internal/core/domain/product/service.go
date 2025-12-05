@@ -182,6 +182,11 @@ func (s *productService) AddCauses(ctx context.Context, ownerID, productID uint,
 		return err
 	}
 
+	s.logger.InfoContext(ctx, "user have permission for product",
+		slog.Uint64("user_id", uint64(ownerID)),
+		slog.Uint64("product_id", uint64(productID)),
+	)
+
 	if err := s.causeSvc.BulkCreateCauses(ctx, productID, reasons); err != nil {
 		return err
 	}
