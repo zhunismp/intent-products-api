@@ -11,9 +11,10 @@ import (
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
+	"gorm.io/plugin/opentelemetry/tracing"
 )
 
-// TODO: update gorm to v2 and use zap logger instead of gorm logger
+// TODO: update gorm to v2
 func NewPostgresDatabase(host, user, password, dbname, port, sslmode, TimeZone string) *gorm.DB {
 	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=%s TimeZone=%s",
 		host,
@@ -42,6 +43,10 @@ func NewPostgresDatabase(host, user, password, dbname, port, sslmode, TimeZone s
 	gormDB, err := gorm.Open(postgres.Open(dsn), gormConfig)
 	if err != nil {
 		log.Fatalf("FATAL: Failed to connect to database during init: %v. DSN (sensitive parts might be shown): %s", err, dsn)
+	}
+
+	if err := gormDB.Use(tracing.NewPlugin(tracing.WithoutMetrics())); err != nil {
+		log.Fatal("FATAL: Failed to apply tracing plugin")
 	}
 
 	sqlDB, err := gormDB.DB()

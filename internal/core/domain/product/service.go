@@ -6,7 +6,6 @@ import (
 
 	"github.com/zhunismp/intent-products-api/internal/core/domain/cause"
 	"github.com/zhunismp/intent-products-api/internal/core/domain/shared/utils/ordering"
-	"go.opentelemetry.io/otel"
 )
 
 type productService struct {
@@ -35,10 +34,6 @@ func (s *productService) CreateProduct(
 	link string,
 	reasons []string,
 ) error {
-	// tracer
-	tr := otel.Tracer("product-service")
-	ctx, span := tr.Start(ctx, "CreateProduct")
-	defer span.End()
 
 	product := &Product{
 		OwnerID:  ownerID,
@@ -58,7 +53,16 @@ func (s *productService) CreateProduct(
 		return err
 	}
 
-	s.logger.Info("product created successfully")
+	s.logger.InfoContext(ctx, "product saved successfully",
+		slog.Uint64("user_id", uint64(ownerID)),
+		slog.Group("product_info",
+			slog.Uint64("id", uint64(productID)),
+			slog.String("title", title),
+			slog.String("link", link),
+			slog.Float64("price", price),
+			slog.Any("reason", reasons),
+		),
+	)
 
 	return nil
 }
@@ -77,7 +81,10 @@ func (s *productService) GetProduct(ctx context.Context, ownerID, productID uint
 
 	product.Causes = causes
 
-	s.logger.Info("product fetched successfully")
+	s.logger.InfoContext(ctx, "get product successfully",
+		slog.Uint64("user_id", uint64(ownerID)),
+		slog.Uint64("product_id", uint64(product.ID)),
+	)
 
 	return product, nil
 }
@@ -89,7 +96,14 @@ func (s *productService) GetAllProducts(ctx context.Context, ownerID uint, filte
 		return nil, err
 	}
 
-	s.logger.Info("products fetched by status")
+	s.logger.InfoContext(ctx, "get all products successfully",
+		slog.Uint64("user_id", uint64(ownerID)),
+		slog.Group("filter",
+			slog.String("status", filter.Status),
+			slog.Int("page", filter.Page),
+			slog.Int("size", filter.Size),
+		),
+	)
 
 	return products, nil
 }
@@ -132,6 +146,16 @@ func (s *productService) Move(ctx context.Context, ownerID uint, productID uint,
 		return err
 	}
 
+	s.logger.InfoContext(ctx, "move product successfully",
+		slog.Uint64("user_id", uint64(ownerID)),
+		slog.Uint64("product_id", uint64(productID)),
+		slog.Group("position_info",
+			slog.String("new_position", newPos),
+			slog.String("prev_position", prevPos),
+			slog.String("next_position", nextPos),
+		),
+	)
+
 	return nil
 }
 
@@ -145,7 +169,10 @@ func (s *productService) DeleteProduct(ctx context.Context, ownerID, productID u
 		return err
 	}
 
-	s.logger.Info("product deleted successfully")
+	s.logger.InfoContext(ctx, "product deleted successfully",
+		slog.Uint64("user_id", uint64(ownerID)),
+		slog.Uint64("product_id", uint64(productID)),
+	)
 
 	return nil
 }

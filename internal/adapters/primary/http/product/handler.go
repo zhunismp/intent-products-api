@@ -1,14 +1,13 @@
 package product
 
 import (
-	"strconv"
 	"log/slog"
+	"strconv"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v3"
 	dto "github.com/zhunismp/intent-products-api/internal/adapters/primary/http/shared/dto"
 	core "github.com/zhunismp/intent-products-api/internal/core/domain/product"
-	"go.opentelemetry.io/otel"
 )
 
 // for development purpose.
@@ -35,18 +34,11 @@ func NewProductHttpHandler(productSvc core.ProductUsecase, logger *slog.Logger) 
 }
 
 func (h *ProductHttpHandler) CreateProduct(c fiber.Ctx) error {
-	// tracer
-	tr := otel.Tracer("product-handler")
-	ctx, span := tr.Start(c.Context(), "CreateProduct")
-	defer span.End()
-
-	// h.logger.Ctx(c.Context()).Info("create product request received")
 
 	req := new(CreateProductRequest)
 
 	// parse request body
 	if err := c.Bind().Body(&req); err != nil {
-		// h.logger.Ctx(c.Context()).Warn("failed to parse request body", slog.Error(err))
 		return c.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{ErrorMessage: "can not parse request body"})
 	}
 
@@ -54,19 +46,17 @@ func (h *ProductHttpHandler) CreateProduct(c fiber.Ctx) error {
 	if err := h.reqValidator.Struct(req); err != nil {
 		if errs, ok := err.(validator.ValidationErrors); ok {
 			errMap := GenerateErrorMap(errs)
-			// h.logger.Ctx(c.Context()).Warn("request validation failed", slog.Any("errors", errMap))
 			return c.Status(fiber.StatusBadRequest).JSON(dto.ValidationErrorResponse{
 				ErrorMessage: "invalid request",
 				ErrorFields:  errMap,
 			})
 		}
 
-		// h.logger.Ctx(c.Context()).Error("unexpected validation error", slog.Error(err))
 		return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{ErrorMessage: "something went wrong"})
 	}
 
 	// calling svc
-	if err := h.productSvc.CreateProduct(ctx, OwnerID, req.Title, req.Price, req.Link, req.Reasons); err != nil {
+	if err := h.productSvc.CreateProduct(c.Context(), OwnerID, req.Title, req.Price, req.Link, req.Reasons); err != nil {
 		return dto.HandleError(c, err)
 	}
 
@@ -77,23 +67,17 @@ func (h *ProductHttpHandler) CreateProduct(c fiber.Ctx) error {
 }
 
 func (h *ProductHttpHandler) GetProduct(c fiber.Ctx) error {
-	// tracer
-	tr := otel.Tracer("product-handler")
-	ctx, span := tr.Start(c.Context(), "GetProduct")
-	defer span.End()
-
 	idStr := c.Params("id")
 
 	id, err := strconv.ParseUint(idStr, 10, 64)
 	if err != nil {
-		// h.logger.Ctx(c.Context()).Warn("invalid product id parameter", slog.String("id", idStr), slog.Error(err))
 		return c.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{ErrorMessage: "can not parse id"})
 	}
 
 	productID := uint(id)
 
 	// calling svc
-	product, err := h.productSvc.GetProduct(ctx, OwnerID, productID)
+	product, err := h.productSvc.GetProduct(c.Context(), OwnerID, productID)
 	if err != nil {
 		return dto.HandleError(c, err)
 	}
@@ -102,23 +86,18 @@ func (h *ProductHttpHandler) GetProduct(c fiber.Ctx) error {
 }
 
 func (h *ProductHttpHandler) GetAllProducts(c fiber.Ctx) error {
-	// tracer
-	tr := otel.Tracer("product-handler")
-	ctx, span := tr.Start(c.Context(), "GetAllProducts")
-	defer span.End()
-
 	status := c.Query("status")
 	page := dto.QueryInt(c, "page", 1)
 	size := dto.QueryInt(c, "size", 20)
 
 	filter := &core.Filter{
 		Status: status,
-		Page: page,
-		Size: size,
+		Page:   page,
+		Size:   size,
 	}
 
 	// calling svc
-	products, err := h.productSvc.GetAllProducts(ctx, OwnerID, filter)
+	products, err := h.productSvc.GetAllProducts(c.Context(), OwnerID, filter)
 	if err != nil {
 		return dto.HandleError(c, err)
 	}
@@ -127,18 +106,10 @@ func (h *ProductHttpHandler) GetAllProducts(c fiber.Ctx) error {
 }
 
 func (h *ProductHttpHandler) MoveProductPosition(c fiber.Ctx) error {
-	// tracer
-	tr := otel.Tracer("product-handler")
-	ctx, span := tr.Start(c.Context(), "UpdatePriority")
-	defer span.End()
-
-	// h.logger.Ctx(c.Context()).Info("update priority request received")
-
 	req := new(UpdatePriorityRequest)
 
 	// parse request body
 	if err := c.Bind().Body(&req); err != nil {
-		// h.logger.Ctx(c.Context()).Warn("failed to parse request body", slog.Error(err))
 		return c.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{ErrorMessage: "can not parse request body"})
 	}
 
@@ -146,18 +117,16 @@ func (h *ProductHttpHandler) MoveProductPosition(c fiber.Ctx) error {
 	if err := h.reqValidator.Struct(req); err != nil {
 		if errs, ok := err.(validator.ValidationErrors); ok {
 			errMap := GenerateErrorMap(errs)
-			// h.logger.Ctx(c.Context()).Warn("request validation failed", slog.Any("errors", errMap))
 			return c.Status(fiber.StatusBadRequest).JSON(dto.ValidationErrorResponse{
 				ErrorMessage: "invalid request",
 				ErrorFields:  errMap,
 			})
 		}
 
-		// h.logger.Ctx(c.Context()).Error("unexpected validation error", slog.Error(err))
 		return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{ErrorMessage: "something went wrong"})
 	}
 
-	if err := h.productSvc.Move(ctx, OwnerID, req.ProductID, req.ProductIDAfter); err != nil {
+	if err := h.productSvc.Move(c.Context(), OwnerID, req.ProductID, req.ProductIDAfter); err != nil {
 		return dto.HandleError(c, err)
 	}
 
@@ -165,23 +134,17 @@ func (h *ProductHttpHandler) MoveProductPosition(c fiber.Ctx) error {
 }
 
 func (h *ProductHttpHandler) DeleteProduct(c fiber.Ctx) error {
-	// tracer
-	tr := otel.Tracer("product-service")
-	ctx, span := tr.Start(c.Context(), "DeleteProduct")
-	defer span.End()
-
 	idStr := c.Params("id")
 
 	id, err := strconv.ParseUint(idStr, 10, 64)
 	if err != nil {
-		// h.logger.Ctx(c.Context()).Warn("invalid product id parameter", slog.String("id", idStr), slog.Error(err))
 		return c.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{ErrorMessage: "can not parse id"})
 	}
 
 	productID := uint(id)
 
 	// calling svc
-	if err := h.productSvc.DeleteProduct(ctx, OwnerID, productID); err != nil {
+	if err := h.productSvc.DeleteProduct(c.Context(), OwnerID, productID); err != nil {
 		return dto.HandleError(c, err)
 	}
 

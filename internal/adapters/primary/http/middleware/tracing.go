@@ -13,12 +13,11 @@ import (
 
 func TraceMiddleware() fiber.Handler {
 	propagator := otel.GetTextMapPropagator()
+	tracer := otel.Tracer("http.server")
 
 	return func(c fiber.Ctx) error {
 		ctx := propagator.Extract(c.Context(), propagation.HeaderCarrier(c.GetReqHeaders()))
-
-		tracer := otel.Tracer("intent-product-apis-http")
-		ctx, span := tracer.Start(ctx, "intent-product-api",
+		ctx, span := tracer.Start(ctx, c.Method()+" "+c.Path(),
 			trace.WithSpanKind(trace.SpanKindServer),
 			trace.WithAttributes(
 				semconv.HTTPRequestMethodOriginal(c.Method()),
@@ -28,6 +27,7 @@ func TraceMiddleware() fiber.Handler {
 				attribute.String("component", "http-handler"),
 			),
 		)
+		defer span.End()
 
 		start := time.Now()
 		c.SetContext(ctx)
@@ -41,6 +41,10 @@ func TraceMiddleware() fiber.Handler {
 			semconv.HTTPResponseStatusCode(statusCode),
 			attribute.Float64("http.server.duration_seconds", duration),
 		)
+
+		if err != nil {
+			span.RecordError(err)
+		}
 
 		return err
 	}

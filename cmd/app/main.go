@@ -35,7 +35,7 @@ func main() {
 	)
 	_, err = SetupTelemetry(context.Background(), cfg.GetServerName(), cfg.GetServerEnv())
 	
-	logger := GetLogger(cfg.GetServerEnv(), cfg.GetServerEnv())
+	logger := GetLogger(cfg.GetServerEnv(), cfg.GetServerName())
 	baseApiPrefix := cfg.GetServerBaseApiPrefix()
 
 	productDbRepo := NewProductRepository(db)

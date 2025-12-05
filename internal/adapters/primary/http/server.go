@@ -14,7 +14,7 @@ import (
 	limiter "github.com/gofiber/fiber/v3/middleware/limiter"
 	logger "github.com/gofiber/fiber/v3/middleware/logger"
 	recover "github.com/gofiber/fiber/v3/middleware/recover"
-	"github.com/gofiber/fiber/v3/middleware/requestid"
+	"github.com/zhunismp/intent-products-api/internal/adapters/primary/http/middleware"
 	"github.com/zhunismp/intent-products-api/internal/adapters/primary/http/product"
 	core "github.com/zhunismp/intent-products-api/internal/core/infrastructure/config"
 )
@@ -44,14 +44,15 @@ func NewHttpServer(cfg core.AppConfigProvider, slogLogger *slog.Logger, baseApiP
 
 	app.Use(recover.New())
 
-	app.Use(requestid.New())
+	app.Use(middleware.RequestIDMiddleware())
 
-	// Use slog via Done callback
+	app.Use(middleware.TraceMiddleware())
+
 	app.Use(logger.New(logger.Config{
 		Stream: io.Discard,
 		Done: func(c fiber.Ctx, logString []byte) {
 			slogLogger.Info("http request",
-				slog.String("request_id", requestid.FromContext(c)),
+				// slog.String("request_id", requestid.FromContext(c)),
 				slog.String("method", c.Method()),
 				slog.String("path", c.Path()),
 				slog.Int("status", c.Response().StatusCode()),
