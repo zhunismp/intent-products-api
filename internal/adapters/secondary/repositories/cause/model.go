@@ -21,6 +21,8 @@ func (m *CauseModel) ToDomain() *domain.Cause {
 		ID:     m.ID,
 		Reason: m.Reason,
 		Status: m.Status,
+		CreatedAt: m.CreatedAt,
+		UpdatedAt: m.UpdatedAt,
 	}
 }
 

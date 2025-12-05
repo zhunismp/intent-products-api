@@ -122,7 +122,7 @@ func (s *HttpServer) SetupRoute(routeGroup *RouteGroup) {
 		router.Get("/:id", productHandler.GetProduct)
 		router.Get("/", productHandler.GetAllProducts)
 		router.Post("/", productHandler.CreateProduct)
-		router.Put("/position", productHandler.MoveProductPosition)
+		router.Put("/positions", productHandler.MoveProductPosition)
 		router.Delete("/:id", productHandler.DeleteProduct)
 	})
 }

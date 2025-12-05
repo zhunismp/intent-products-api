@@ -16,7 +16,7 @@ type Product struct {
 	Price    float64        `json:"price"`
 	Status   string         `json:"status"`
 	Position string         `json:"-"`
-	Causes   []*cause.Cause `json:"causes"`
+	Causes   []*cause.Cause `json:"causes,omitempty"`
 
 	CreatedAt time.Time `json:"createdAt"`
 	UpdatedAt time.Time `json:"updatedAt"`
